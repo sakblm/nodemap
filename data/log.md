@@ -1,27 +1,16 @@
-handleArticleRead実行: 
-{article: {…}, showFavorites: false, currentView: 'favorites'}
-article
-: 
-{title: '寿司職人が教える、家庭でできる握り寿司のコツ', tags: Array(3), snippet: '記事の詳細', source: 'お気に入り'}
-currentView
-: 
-"favorites"
-showFavorites
-: 
-false
-[[Prototype]]
-: 
-Object
-Inline Babel script:559 記事詳細表示設定中...
-Inline Babel script:562 記事詳細表示設定完了
-Inline Babel script:1257 お気に入り記事一覧: 
-[{…}]
-0
-: 
-{title: '記事: 寿司職人が教える、家庭でできる握り寿司のコツ', type: 'article', tags: Array(3), timestamp: '2025-09-13T09:00:47.996Z', articleCount: 1, …}
-length
-: 
-1
-[[Prototype]]
-: 
-Array(0)
+モーダル表示チェック: {showArticleDetail: false, selectedArticle: false, currentView: 'map'}
+Inline Babel script:363 toggleFavorites呼び出し: {title: '記事: ヤフオク！で賢く売るコツ', type: 'article', tags: Array(3), articleCount: 1, articleData: {…}}
+Inline Babel script:374 作成されるレポート: {title: '記事: ヤフオク！で賢く売るコツ', type: 'article', tags: Array(3), timestamp: '2025-09-13T13:13:08.099Z', articleCount: 1, …}
+Inline Babel script:411 お気に入り保存完了: (5) [{…}, {…}, {…}, {…}, {…}]
+Inline Babel script:1605 モーダル表示チェック: {showArticleDetail: false, selectedArticle: false, currentView: 'map'}
+Inline Babel script:363 toggleFavorites呼び出し: {title: '記事: ZOZOで楽しむ新しいファッション', type: 'article', tags: Array(4), articleCount: 1, articleData: {…}}
+Inline Babel script:374 作成されるレポート: {title: '記事: ZOZOで楽しむ新しいファッション', type: 'article', tags: Array(4), timestamp: '2025-09-13T13:13:12.565Z', articleCount: 1, …}
+Inline Babel script:411 お気に入り保存完了: (6) [{…}, {…}, {…}, {…}, {…}, {…}]
+Inline Babel script:1605 モーダル表示チェック: {showArticleDetail: false, selectedArticle: false, currentView: 'map'}
+Inline Babel script:2429 お気に入りボタンクリック、現在のビュー: map
+Inline Babel script:2430 お気に入りレポート数: 6
+Inline Babel script:1404 お気に入り記事一覧: (3) [{…}, {…}, {…}]
+Inline Babel script:1404 お気に入り記事一覧: (3) [{…}, {…}, {…}]
+Inline Babel script:1404 お気に入り記事一覧: (2) [{…}, {…}]
+Inline Babel script:1404 お気に入り記事一覧: [{…}]
+Inline Babel script:1404 お気に入り記事一覧: []
