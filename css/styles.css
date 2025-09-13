@@ -92,6 +92,46 @@
     font-size: 8px;
 }
 
+/* Pin button animation */
+.pin-button {
+    transition: all 0.2s ease;
+}
+
+.pin-button:hover {
+    transform: scale(1.1);
+}
+
+.pin-button:active {
+    transform: scale(0.95);
+}
+
+/* Completion animation */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+@keyframes checkmark {
+    0% {
+        stroke-dasharray: 0 50;
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dasharray: 50 0;
+        stroke-dashoffset: 0;
+    }
+}
+
+.completion-check {
+    animation: checkmark 0.3s ease-in-out;
+}
+
 /* Dynamic layout utilities */
 .map-height {
     height: var(--map-height, 60vh);

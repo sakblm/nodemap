@@ -364,11 +364,9 @@
                 }
             };
 
-            // お気に入りレポート管理
-            const addToFavorites = (reportData) => {
-                const reportId = `${reportData.type}_${reportData.tags.join('_')}_${Date.now()}`;
+            // お気に入りレポート管理（トグル機能付き）
+            const toggleFavorites = (reportData, event) => {
                 const newReport = {
-                    id: reportId,
                     title: reportData.title,
                     type: reportData.type,
                     tags: reportData.tags,
@@ -377,26 +375,118 @@
                 };
                 
                 setFavoriteReports(prev => {
-                    // 重複チェック
-                    const exists = prev.some(report => 
+                    // 既存チェック
+                    const existingIndex = prev.findIndex(report => 
                         report.type === newReport.type && 
                         JSON.stringify(report.tags.sort()) === JSON.stringify(newReport.tags.sort())
                     );
                     
-                    if (exists) {
-                        alert('このレポートは既にお気に入りに追加されています');
-                        return prev;
+                    if (existingIndex !== -1) {
+                        // 既存の場合は削除（解除）
+                        if (event) {
+                            showCompletionAnimation(event.target, 'delete');
+                        }
+                        return prev.filter((_, index) => index !== existingIndex);
+                    } else {
+                        // 新規の場合は追加
+                        const reportId = `${reportData.type}_${reportData.tags.join('_')}_${Date.now()}`;
+                        const reportWithId = { ...newReport, id: reportId };
+                        
+                        if (event) {
+                            showCompletionAnimation(event.target, 'success');
+                        }
+                        return [...prev, reportWithId];
                     }
-                    
-                    return [...prev, newReport];
                 });
-                
-                // 成功メッセージ
-                alert(`「${reportData.title}」をお気に入りに追加しました`);
+            };
+            
+            // 旧関数名との互換性のため
+            const addToFavorites = toggleFavorites;
+            
+            // お気に入り状態チェック
+            const isFavorite = (reportData) => {
+                return favoriteReports.some(report => 
+                    report.type === reportData.type && 
+                    JSON.stringify(report.tags.sort()) === JSON.stringify(reportData.tags.sort())
+                );
             };
 
-            const removeFromFavorites = (reportId) => {
+            const removeFromFavorites = (reportId, event) => {
                 setFavoriteReports(prev => prev.filter(report => report.id !== reportId));
+                
+                // 削除時の完了アニメーション
+                if (event) {
+                    showCompletionAnimation(event.target, 'delete');
+                }
+            };
+
+            // 作業完了感のあるアニメーション
+            const showCompletionAnimation = (target, type) => {
+                if (!target) return;
+                
+                // ボタンの一時的な変更
+                const originalHTML = target.innerHTML;
+                const originalClass = target.getAttribute('class') || target.className || '';
+                
+                // アニメーション状態に変更
+                target.style.transform = 'scale(1.2)';
+                target.style.transition = 'all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                
+                if (type === 'success') {
+                    target.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                    `;
+                    target.setAttribute('class', String(originalClass).replace('text-gray-400', 'text-green-500'));
+                } else if (type === 'existing') {
+                    target.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    `;
+                    target.setAttribute('class', String(originalClass).replace('text-gray-400', 'text-orange-500'));
+                } else if (type === 'delete') {
+                    target.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                    `;
+                    target.setAttribute('class', String(originalClass).replace('text-gray-400', 'text-red-500'));
+                }
+                
+                // 波紋エフェクト
+                const ripple = document.createElement('div');
+                ripple.style.position = 'absolute';
+                ripple.style.borderRadius = '50%';
+                ripple.style.background = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 
+                                         type === 'existing' ? 'rgba(249, 115, 22, 0.3)' : 
+                                         'rgba(239, 68, 68, 0.3)';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                ripple.style.width = '40px';
+                ripple.style.height = '40px';
+                ripple.style.left = '-12px';
+                ripple.style.top = '-12px';
+                ripple.style.pointerEvents = 'none';
+                
+                target.style.position = 'relative';
+                target.appendChild(ripple);
+                
+                // アニメーション終了後に元に戻す
+                setTimeout(() => {
+                    target.style.transform = 'scale(1)';
+                    setTimeout(() => {
+                        target.innerHTML = originalHTML;
+                        target.setAttribute('class', String(originalClass));
+                        target.style.transform = '';
+                        target.style.transition = '';
+                        if (ripple.parentNode) {
+                            ripple.parentNode.removeChild(ripple);
+                        }
+                    }, 200);
+                }, 400);
             };
 
             // データ読み込み
@@ -1203,16 +1293,29 @@
                                                             {selectedTags.join(' × ')} の集約レポート
                                                         </h2>
                                                         <button
-                                                            onClick={() => addToFavorites({
+                                                            onClick={(e) => addToFavorites({
                                                                 title: `${selectedTags.join(' × ')} の集約レポート`,
                                                                 type: 'aggregation',
                                                                 tags: selectedTags,
                                                                 articleCount: getMapFilteredArticles().length
-                                                            })}
-                                                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                                                            title="お気に入りに追加"
+                                                            }, e)}
+                                                            className={`p-1 transition-colors pin-button ${
+                                                                isFavorite({
+                                                                    type: 'aggregation',
+                                                                    tags: selectedTags
+                                                                }) 
+                                                                ? 'text-blue-600 hover:text-blue-700' 
+                                                                : 'text-gray-400 hover:text-blue-600'
+                                                            }`}
+                                                            title={isFavorite({
+                                                                type: 'aggregation',
+                                                                tags: selectedTags
+                                                            }) ? "お気に入りから削除" : "お気に入りに追加"}
                                                         >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite({
+                                                                type: 'aggregation',
+                                                                tags: selectedTags
+                                                            }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                                             </svg>
                                                         </button>
@@ -1755,7 +1858,15 @@
                                 
                                 {/* お気に入りリストボタン */}
                                 <button
-                                    onClick={() => setShowFavoritesList(!showFavoritesList)}
+                                    onClick={() => {
+                                        try {
+                                            console.log('お気に入りボタンクリック、現在の状態:', showFavoritesList);
+                                            console.log('お気に入りレポート数:', favoriteReports.length);
+                                            setShowFavoritesList(!showFavoritesList);
+                                        } catch (error) {
+                                            console.error('お気に入りリスト表示エラー:', error);
+                                        }
+                                    }}
                                     className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all mx-0.5 relative"
                                     title="お気に入りリスト"
                                 >
@@ -1833,24 +1944,24 @@
                                         </div>
                                     ) : (
                                         <div className="p-2">
-                                            {favoriteReports.map((report) => (
-                                                <div key={report.id} className="p-3 hover:bg-gray-50 rounded-lg mb-2 border border-gray-100">
+                                            {favoriteReports.map((report, index) => (
+                                                <div key={report.id || index} className="p-3 hover:bg-gray-50 rounded-lg mb-2 border border-gray-100">
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex-1">
-                                                            <h4 className="text-sm font-medium text-gray-900 mb-1">{report.title}</h4>
+                                                            <h4 className="text-sm font-medium text-gray-900 mb-1">{report.title || '無題のレポート'}</h4>
                                                             <div className="flex flex-wrap gap-1 mb-2">
-                                                                {report.tags.map(tag => (
-                                                                    <span key={tag} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
+                                                                {(report.tags || []).map((tag, tagIndex) => (
+                                                                    <span key={tagIndex} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
                                                                         {tag}
                                                                     </span>
                                                                 ))}
                                                             </div>
                                                             <div className="text-xs text-gray-500">
-                                                                {report.articleCount}件の記事 • {new Date(report.timestamp).toLocaleDateString('ja-JP')}
+                                                                {report.articleCount || 0}件の記事 • {report.timestamp ? new Date(report.timestamp).toLocaleDateString('ja-JP') : '日付不明'}
                                                             </div>
                                                         </div>
                                                         <button
-                                                            onClick={() => removeFromFavorites(report.id)}
+                                                            onClick={(e) => removeFromFavorites(report.id, e)}
                                                             className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                                                             title="削除"
                                                         >
@@ -1862,7 +1973,7 @@
                                                     <button
                                                         onClick={() => {
                                                             // レポートを再現
-                                                            setSelectedTags(report.tags);
+                                                            setSelectedTags(report.tags || []);
                                                             setShowFavorites(true);
                                                             setShowFavoritesList(false);
                                                         }}
