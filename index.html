@@ -1332,8 +1332,7 @@
                                     >
                                         <svg 
                                             id="mapSvg" 
-                                            className="w-full h-full"
-                                            style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
+                                            className="w-full h-full network-bg"
                                         ></svg>
                                         
 
@@ -1346,11 +1345,7 @@
                                                     max="100"
                                                     value={interestDepth}
                                                     onChange={(e) => setInterestDepth(Number(e.target.value))}
-                                                    className="flex-1 h-2 bg-gray-300 rounded-full appearance-none cursor-pointer slider-thumb"
-                                                    style={{
-                                                        background: `linear-gradient(to right, #ec4899 0%, #3b82f6 33%, #06b6d4 66%, #10b981 100%)`,
-                                                        backgroundSize: '100% 100%'
-                                                    }}
+                                                    className="flex-1 h-2 bg-gray-300 rounded-full appearance-none cursor-pointer slider-thumb balance-bar-bg"
                                                 />
                                                 <button
                                                     onClick={() => setShowBalanceInfo(!showBalanceInfo)}
@@ -1548,11 +1543,11 @@
                                                                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                                                 />
                                                                 {/* 話題度インジケーター */}
-                                                                <div className={`absolute top-0.5 right-0.5 text-white text-xs px-1 py-0.5 rounded text-xs ${
+                                                                <div className={`absolute top-0.5 right-0.5 text-white px-1 py-0.5 rounded text-xs-small ${
                                                                     article.topicalityScore >= 80 ? 'bg-red-500' : 
                                                                     article.topicalityScore >= 60 ? 'bg-orange-500' : 
                                                                     article.topicalityScore >= 40 ? 'bg-yellow-600' : 'bg-gray-500/70'
-                                                                }`} style={{fontSize: '8px'}}>
+                                                                }`}>
                                                                     {Math.round(article.topicalityScore)}
                                                                 </div>
                                                             </div>
@@ -1594,13 +1589,7 @@
                                         
                                         {/* グリッドビュー（正方形固定） */}
                                         {mapViewMode === 'grid' && (
-                                            <div className="grid gap-1 w-full overflow-hidden -mx-1" style={{
-                                                gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))',
-                                                gridAutoFlow: 'dense',
-                                                gridAutoRows: 'minmax(60px, 1fr)',
-                                                alignItems: 'stretch',
-                                                width: 'calc(100% + 0.5rem)'
-                                            }}>
+                                            <div className="grid gap-1 w-full overflow-hidden -mx-1 article-grid">
                                                 {getMapFilteredArticles().map((article, index) => {
                                                     const matchingTags = article.tags.filter(tag => selectedTags.includes(tag));
                                                     
