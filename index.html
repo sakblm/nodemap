@@ -1143,7 +1143,7 @@
                                                     setCurrentView('map');
                                                 }
                                             }}
-                                            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors"
+                                            className="w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full flex items-center justify-center text-white transition-all"
                                         >
                                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1152,45 +1152,99 @@
                                     </div>
 
                                     {/* スクロール可能なコンテンツ */}
-                                    <div className="pt-16 pb-4 px-6 h-full overflow-y-auto">
-                                        <div className="mb-6">
-                                            <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-3">
-                                                {selectedArticle.title}
-                                            </h1>
-                                            <div className="flex items-center text-sm text-gray-500 mb-4">
-                                                <span className="mr-4">{selectedArticle.source}</span>
-                                                <span>話題度: {Math.round(selectedArticle.topicalityScore || 50)}</span>
+                                    <div className="overflow-y-auto max-h-[90vh]">
+                                        {/* 記事画像 */}
+                                        <div className="relative">
+                                            <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 relative overflow-hidden">
+                                                <img
+                                                    src="https://s.yimg.jp/images/ksk/tool/img/photo01.png"
+                                                    alt={selectedArticle.title}
+                                                    className="w-full h-full object-cover opacity-80"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+
+                                                {/* 話題度バッジ */}
+                                                <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-white text-sm font-medium ${
+                                                    (selectedArticle.topicalityScore || 50) >= 80 ? 'bg-red-500' :
+                                                    (selectedArticle.topicalityScore || 50) >= 60 ? 'bg-orange-500' :
+                                                    (selectedArticle.topicalityScore || 50) >= 40 ? 'bg-yellow-500' : 'bg-gray-500'
+                                                }`}>
+                                                    話題度 {Math.round(selectedArticle.topicalityScore || 50)}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* 記事画像 */}
-                                        <div className="mb-6">
-                                            <img
-                                                src="https://s.yimg.jp/images/ksk/tool/img/photo01.png"
-                                                alt={selectedArticle.title}
-                                                className="w-full h-64 object-cover rounded-lg"
-                                            />
-                                        </div>
+                                        {/* コンテンツ */}
+                                        <div className="p-6">
+                                            {/* タイトル */}
+                                            <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+                                                {selectedArticle.title}
+                                            </h1>
 
-                                        {/* 記事内容 */}
-                                        <div className="mb-6">
-                                            <p className="text-gray-700 leading-relaxed text-base">
-                                                {selectedArticle.snippet}
-                                            </p>
-                                        </div>
+                                            {/* メタ情報 */}
+                                            <div className="flex items-center gap-4 mb-6 text-sm text-gray-500">
+                                                <span className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm1-10H7v5l4 2.4.8-1.2-3.8-2.2V4z" fill="currentColor"/>
+                                                    </svg>
+                                                    {new Date().toLocaleDateString('ja-JP')}
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M2 4.5C2 3.67157 2.67157 3 3.5 3H12.5C13.3284 3 14 3.67157 14 4.5V11.5C14 12.3284 13.3284 13 12.5 13H3.5C2.67157 13 2 12.3284 2 11.5V4.5ZM3.5 4C3.22386 4 3 4.22386 3 4.5V5.5L8 8.5L13 5.5V4.5C13 4.22386 12.7761 4 12.5 4H3.5ZM13 6.5L8 9.5L3 6.5V11.5C3 11.7761 3.22386 12 3.5 12H12.5C12.7761 12 13 11.7761 13 11.5V6.5Z" fill="currentColor"/>
+                                                    </svg>
+                                                    {selectedArticle.source}
+                                                </span>
+                                            </div>
 
-                                        {/* タグ */}
-                                        <div className="mb-6">
-                                            <h3 className="text-sm font-medium text-gray-500 mb-3">関連タグ</h3>
-                                            <div className="flex flex-wrap gap-2">
-                                                {(selectedArticle.tags || []).map((tag, index) => (
-                                                    <span
-                                                        key={index}
-                                                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                                                    >
-                                                        {tag}
-                                                    </span>
-                                                ))}
+                                            {/* 記事本文 */}
+                                            <div className="prose max-w-none mb-6">
+                                                <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                                    {selectedArticle.snippet}
+                                                </p>
+
+                                                {/* 詳細内容（サンプル） */}
+                                                <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                                    この記事では、{selectedArticle.title}について詳しく解説します。最新の動向や技術的な詳細、今後の展望についても触れながら、読者の皆様にとって有益な情報をお届けします。
+                                                </p>
+
+                                                <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                                    {(selectedArticle.tags || []).includes('AI') && 'AI技術の進歩により、私たちの生活は大きく変化しています。'}
+                                                    {(selectedArticle.tags || []).includes('技術') && 'この技術革新は、産業界全体に影響を与えています。'}
+                                                    {(selectedArticle.tags || []).includes('ビジネス') && 'ビジネスの世界では、新しいビジネスモデルが次々と生まれています。'}
+                                                    {(selectedArticle.tags || []).includes('料理') && '食文化の多様性と伝統の継承について考える機会となります。'}
+                                                    今後の動向にも注目していく必要があります。
+                                                </p>
+                                            </div>
+
+                                            {/* タグ */}
+                                            <div className="mb-6">
+                                                <h3 className="text-sm font-semibold text-gray-600 mb-3">関連タグ</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(selectedArticle.tags || []).map((tag, index) => (
+                                                        <span
+                                                            key={index}
+                                                            className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm rounded-full font-medium hover:bg-blue-200 transition-colors cursor-pointer"
+                                                            onClick={() => {
+                                                                handleTagClick(tag);
+                                                                setShowArticleDetail(false);
+                                                                setCurrentView('map');
+                                                            }}
+                                                        >
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* アクションボタン */}
+                                            <div className="flex justify-center pt-4 border-t">
+                                                <button
+                                                    onClick={() => setShowArticleDetail(false)}
+                                                    className="px-6 py-3 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition-colors"
+                                                >
+                                                    閉じる
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
