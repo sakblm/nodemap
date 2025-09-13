@@ -413,6 +413,7 @@
                     // ローカルストレージに保存
                     try {
                         localStorage.setItem('favoriteReports', JSON.stringify(updatedReports));
+                        console.log('お気に入り保存完了:', updatedReports);
                     } catch (error) {
                         console.error('お気に入り保存エラー:', error);
                     }
@@ -561,6 +562,7 @@
             }, []);
 
             const handleArticleRead = (article, event) => {
+                console.log('handleArticleRead実行:', { article, showFavorites, currentView });
                 // 現在の画面状態を保存
                 if (showFavorites) {
                     setPreviousView('favorites');
@@ -571,8 +573,10 @@
                 }
 
                 // 記事詳細表示
+                console.log('記事詳細表示設定中...');
                 setSelectedArticle(article);
                 setShowArticleDetail(true);
+                console.log('記事詳細表示設定完了');
 
                 // パーティクルアニメーション開始
                 const rect = event.target.getBoundingClientRect();
@@ -1121,6 +1125,79 @@
                     <div className="min-h-screen bg-gray-50">
                         <ParticleSystem />
 
+                        {/* 記事詳細モーダル */}
+                        {showArticleDetail && selectedArticle && (
+                            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                                <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+                                    {/* 固定ヘッダー（閉じるボタンのみ） */}
+                                    <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-end">
+                                        <button
+                                            onClick={() => {
+                                                setShowArticleDetail(false);
+                                                // 前の画面に戻る
+                                                if (previousView === 'favorites') {
+                                                    setShowFavorites(true);
+                                                } else if (previousView === 'favoritesList') {
+                                                    // お気に入りリスト画面にはそのまま残る
+                                                } else {
+                                                    setCurrentView('map');
+                                                }
+                                            }}
+                                            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors"
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {/* スクロール可能なコンテンツ */}
+                                    <div className="pt-16 pb-4 px-6 h-full overflow-y-auto">
+                                        <div className="mb-6">
+                                            <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-3">
+                                                {selectedArticle.title}
+                                            </h1>
+                                            <div className="flex items-center text-sm text-gray-500 mb-4">
+                                                <span className="mr-4">{selectedArticle.source}</span>
+                                                <span>話題度: {Math.round(selectedArticle.topicalityScore || 50)}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* 記事画像 */}
+                                        <div className="mb-6">
+                                            <img
+                                                src="https://s.yimg.jp/images/ksk/tool/img/photo01.png"
+                                                alt={selectedArticle.title}
+                                                className="w-full h-64 object-cover rounded-lg"
+                                            />
+                                        </div>
+
+                                        {/* 記事内容 */}
+                                        <div className="mb-6">
+                                            <p className="text-gray-700 leading-relaxed text-base">
+                                                {selectedArticle.snippet}
+                                            </p>
+                                        </div>
+
+                                        {/* タグ */}
+                                        <div className="mb-6">
+                                            <h3 className="text-sm font-medium text-gray-500 mb-3">関連タグ</h3>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(selectedArticle.tags || []).map((tag, index) => (
+                                                    <span
+                                                        key={index}
+                                                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                                                    >
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* ヘッダー */}
                         <header className="bg-white shadow-sm border-b relative">
                             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1267,6 +1344,7 @@
                                 {/* 記事表示 */}
                                 {(() => {
                                     const favoriteArticles = favoriteReports.filter(report => report.type === 'article');
+                                    console.log('お気に入り記事一覧:', favoriteArticles);
 
                                     if (favoritesViewMode === 'grid') {
                                         return (
@@ -1281,13 +1359,19 @@
                                                             key={report.id || index}
                                                             className="aspect-square bg-white border border-gray-200 rounded cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
                                                             onClick={(e) => {
+                                                                console.log('お気に入り記事クリック:', report);
                                                                 const article = report.articleData || {
                                                                     title: report.title?.replace('記事: ', '') || '無題の記事',
                                                                     tags: report.tags || [],
                                                                     snippet: '記事の詳細',
                                                                     source: 'お気に入り'
                                                                 };
-                                                                handleArticleRead(article, e);
+                                                                console.log('記事データ:', article);
+                                                                try {
+                                                                    handleArticleRead(article, e);
+                                                                } catch (error) {
+                                                                    console.error('記事詳細表示エラー:', error);
+                                                                }
                                                             }}
                                                         >
                                                             <div className="h-full flex flex-col p-2">
@@ -1321,13 +1405,19 @@
                                                             key={report.id || index}
                                                             className="bg-white rounded-lg p-3 shadow-sm border hover:shadow-md transition-all cursor-pointer"
                                                             onClick={(e) => {
+                                                                console.log('お気に入り記事クリック:', report);
                                                                 const article = report.articleData || {
                                                                     title: report.title?.replace('記事: ', '') || '無題の記事',
                                                                     tags: report.tags || [],
                                                                     snippet: '記事の詳細',
                                                                     source: 'お気に入り'
                                                                 };
-                                                                handleArticleRead(article, e);
+                                                                console.log('記事データ:', article);
+                                                                try {
+                                                                    handleArticleRead(article, e);
+                                                                } catch (error) {
+                                                                    console.error('記事詳細表示エラー:', error);
+                                                                }
                                                             }}
                                                         >
                                                             <div className="flex gap-3">
@@ -1430,6 +1520,7 @@
                     <ParticleSystem />
                     
                     {/* 記事詳細モーダル */}
+                    {console.log('モーダル表示チェック:', { showArticleDetail, selectedArticle: !!selectedArticle, currentView })}
                     {showArticleDetail && selectedArticle && (
                         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
