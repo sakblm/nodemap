@@ -1121,11 +1121,43 @@
                         <ParticleSystem />
 
                         {/* ヘッダー */}
-                        <header className="bg-white shadow-sm border-b">
+                        <header className="bg-white shadow-sm border-b relative">
                             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                                <div className="flex items-center h-16">
-                                    <h1 className="text-lg font-medium text-gray-900">お気に入りレポート</h1>
+                                <div className="flex items-center justify-between h-16">
+                                    <h1 className="text-lg font-medium text-gray-900">お気に入り集約</h1>
+                                    <button
+                                        onClick={() => setShowAiHelp(!showAiHelp)}
+                                        className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600 transition-colors"
+                                        title="AI要約について"
+                                    >
+                                        !
+                                    </button>
                                 </div>
+
+                                {/* AIヘルプポップアップ */}
+                                {showAiHelp && (
+                                    <div className="absolute top-full right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-80 z-30">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h4 className="font-semibold text-gray-900">AI要約機能について</h4>
+                                            <button
+                                                onClick={() => setShowAiHelp(false)}
+                                                className="text-gray-400 hover:text-gray-600 ml-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className="text-sm text-gray-600 space-y-2">
+                                            <p>各レポートには要約機能があります：</p>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                <li>レポートを開くと、関連記事の要約が自動生成されます</li>
+                                                <li>複数の記事から主要なポイントを抽出します</li>
+                                                <li>効率的に情報を把握できます</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </header>
 
@@ -1405,54 +1437,69 @@
                             {/* ヘッダー */}
                             <div className="bg-white border-b border-gray-200 sticky top-0 z-10 relative">
                                 <div className="flex items-center justify-between p-4">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => {
-                                                setShowFavorites(false);
-                                                // 前の画面に戻る
-                                                if (previousView === 'favoritesList') {
-                                                    setCurrentView('favorites');
-                                                    setPreviousView(null);
-                                                }
-                                                // メイン画面の場合は何もしない（既に表示されている）
-                                            }}
-                                            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                            </svg>
-                                        </button>
-                                        <div className="flex items-center gap-2">
-                                            <svg width="24" height="25" viewBox="0 0 302 318" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M200.186 58.1534C199.13 58.0267 198.571 56.8128 199.194 55.9578L223.25 22.4859C227.198 17.0075 226.586 9.48138 221.815 4.71024C216.611 -0.49368 208.229 -0.694237 202.793 4.26691L148.041 54.1633C147.524 54.6383 146.722 54.6489 146.194 54.1739L105.819 18.1053C100.277 13.1547 91.8326 13.387 86.5864 18.6437C81.8153 23.4042 81.1186 30.8882 84.9292 36.451L98.641 56.4961C99.2321 57.3511 98.6832 58.5228 97.6593 58.66C33.4389 67.1995 0.420898 96.6603 0.420898 176.313C0.420898 260.536 37.3234 288.646 108.996 295.254C112.437 295.57 115.889 295.697 119.341 295.644C120.238 295.634 120.924 296.457 120.734 297.333L117.831 310.813C117.092 314.961 121.082 318.392 125.083 317.041L235.642 287.231C236.666 286.915 237.669 286.566 238.672 286.229L238.841 286.165C280.303 271.736 301.499 240.132 301.499 176.313C301.499 94.9819 267.098 65.9856 200.186 58.1534ZM255.709 222.483C252.183 231.329 247.327 237.715 240.403 242.571C224.802 253.538 196.375 258.647 150.955 258.647C105.534 258.647 77.1181 253.538 61.5168 242.571C54.6029 237.715 49.7368 231.318 46.2112 222.483C41.6828 211125 39.3817 195.588 39.3817 176.313C39.3817 157.038 41.6828 141.511 46.2112 130.153C49.7368 121.308 54.5924 114.921 61.5168 110.066C77.1181 99.0881 105.544 93.9897 150.955 93.9897C196.365 93.9897 224.791 99.0881 240.403 110.066C247.317 114.921 252.183 121.308 255.709 130.153C260.237 141.511 262.538 157.038 262.538 176.313C262.538 195.588 260.237 211.125 255.709 222.483Z" fill="url(#paint0_linear_13050_1663)"/>
-                                                <path d="M110.971 146.142C94.6836 146.142 91.2002 161.046 91.2002 176.32C91.2002 191.594 94.6836 206.499 110.971 206.499C127.258 206.499 130.742 191.594 130.742 176.32C130.742 161.046 127.258 146.142 110.971 146.142Z" fill="url(#paint1_linear_13050_1663)"/>
-                                                <path d="M190.95 146.142C174.663 146.142 171.18 161.047 171.18 176.321C171.18 191.595 174.663 206.499 190.95 206.499C207.238 206.499 210.732 191.595 210.732 176.321C210.732 161.047 207.248 146.142 190.95 146.142Z" fill="url(#paint2_linear_13050_1663)"/>
-                                                <defs>
-                                                <linearGradient id="paint0_linear_13050_1663" x1="20.4928" y1="323.83" x2="313.547" y2="31.3354" gradientUnits="userSpaceOnUse">
-                                                <stop stopColor="#FF598E"/>
-                                                <stop offset="0.3" stopColor="#A83DEB"/>
-                                                <stop offset="0.7" stopColor="#3083FD"/>
-                                                <stop offset="1" stopColor="#8AD9FE"/>
-                                                </linearGradient>
-                                                <linearGradient id="paint1_linear_13050_1663" x1="194.645" y1="134.726" x2="143.996" y2="285.811" gradientUnits="userSpaceOnUse">
-                                                <stop stopColor="#3083FD"/>
-                                                <stop offset="1" stopColor="#A93DEB"/>
-                                                </linearGradient>
-                                                <linearGradient id="paint2_linear_13050_1663" x1="194.645" y1="134.726" x2="143.996" y2="285.811" gradientUnits="userSpaceOnUse">
-                                                <stop stopColor="#3083FD"/>
-                                                <stop offset="1" stopColor="#A93DEB"/>
-                                                </linearGradient>
-                                                </defs>
-                                            </svg>
-                                            <h1 className="text-xl font-bold text-gray-900">お気に入り集約</h1>
+                                    {/* 左側：閉じるボタン */}
+                                    <button
+                                        onClick={() => {
+                                            console.log('集約レポート閉じるボタン、previousView:', previousView);
+                                            setShowFavorites(false);
+                                            // 前の画面に戻る
+                                            if (previousView === 'favoritesList') {
+                                                console.log('お気に入りリストに戻る');
+                                                setCurrentView('favorites');
+                                                setPreviousView(null);
+                                            } else {
+                                                console.log('メイン画面に戻る');
+                                            }
+                                        }}
+                                        className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+
+                                    {/* 中央：集約レポートラベルとタグ */}
+                                    <div className="flex-1 flex flex-col items-center">
+                                        <div className="bg-black text-white px-4 py-1 rounded-full text-sm font-medium mb-2">
+                                            集約レポート
+                                        </div>
+                                        <div className="flex items-center text-lg font-medium text-gray-900">
+                                            {selectedTags.length > 0 ? selectedTags.join(' × ') : '未選択'}
                                         </div>
                                     </div>
+
+                                    {/* 右側：お気に入りボタン */}
                                     <button
-                                        onClick={() => setShowAiHelp(!showAiHelp)}
-                                        className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600 transition-colors"
-                                        title="AI要約について"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleFavorites({
+                                                title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                type: 'aggregated',
+                                                tags: selectedTags,
+                                                articleCount: getMapFilteredArticles().length
+                                            }, e);
+                                        }}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                                            isFavorite({
+                                                title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                type: 'aggregated',
+                                                tags: selectedTags
+                                            }) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                                        }`}
+                                        title={isFavorite({
+                                            title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                            type: 'aggregated',
+                                            tags: selectedTags
+                                        }) ? "お気に入りから削除" : "お気に入りに追加"}
                                     >
-                                        !
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite({
+                                            title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                            type: 'aggregated',
+                                            tags: selectedTags
+                                        }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                                        </svg>
                                     </button>
                                 </div>
                                 
@@ -1485,38 +1532,6 @@
                                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg mx-4 px-4 mb-4">
                                             <div className="mb-3">
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h2 className="text-sm font-medium text-gray-700">
-                                                            {selectedTags.join(' × ')} の集約レポート
-                                                        </h2>
-                                                        <button
-                                                            onClick={(e) => addToFavorites({
-                                                                title: `${selectedTags.join(' × ')} の集約レポート`,
-                                                                type: 'aggregation',
-                                                                tags: selectedTags,
-                                                                articleCount: getMapFilteredArticles().length
-                                                            }, e)}
-                                                            className={`p-1 transition-colors pin-button ${
-                                                                isFavorite({
-                                                                    type: 'aggregation',
-                                                                    tags: selectedTags
-                                                                }) 
-                                                                ? 'text-blue-600 hover:text-blue-700' 
-                                                                : 'text-gray-400 hover:text-blue-600'
-                                                            }`}
-                                                            title={isFavorite({
-                                                                type: 'aggregation',
-                                                                tags: selectedTags
-                                                            }) ? "お気に入りから削除" : "お気に入りに追加"}
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite({
-                                                                type: 'aggregation',
-                                                                tags: selectedTags
-                                                            }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1837,6 +1852,7 @@
                                         </button>
                                         <button
                                             onClick={() => {
+                                                console.log('集約ボタンクリック: お気に入りリストから');
                                                 setPreviousView('favoritesList'); // お気に入りリストから来たことを記録
                                                 setShowFavorites(true);
                                             }}
