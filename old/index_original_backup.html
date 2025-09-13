@@ -9,7 +9,77 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <link rel="stylesheet" href="./css/styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .slider-thumb::-webkit-slider-thumb {
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #f1f5f9;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .slider-thumb::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        
+        .slider-thumb::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+        
+        .particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .tag-node {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .tag-node:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+        
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
     <div id="root"></div>
@@ -18,97 +88,142 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         
-        // データを外部ファイルから読み込み
-        let inlineData = {
-            articles: [],
-            hierarchical_tags: {}
-        };
-
-        // データ読み込み関数
-        const loadData = async () => {
-            try {
-                console.log('🔄 データファイル読み込み開始...');
-                
-                const [articlesResponse, tagsResponse] = await Promise.all([
-                    fetch('./data/articles.json'),
-                    fetch('./data/hierarchical_tags.json')
-                ]);
-                
-                if (!articlesResponse.ok) {
-                    throw new Error(`Articles fetch failed: ${articlesResponse.status}`);
+        // データの初期化
+        const inlineData = {
+            "articles": [
+                {
+                    "title": "AIが生成する新しい音楽の可能性",
+                    "tags": ["AI", "音楽", "技術"],
+                    "source": "Tech Journal",
+                    "snippet": "人工知能の進化により、作曲や演奏の分野で新たな可能性が広がっています。"
+                },
+                {
+                    "title": "電気自動車、バッテリー技術の次世代トレンド",
+                    "tags": ["電気自動車", "技術", "エネルギー", "SDGs"],
+                    "source": "Future Daily",
+                    "snippet": "全固体電池や新しい充電技術など、電気自動車の航続距離とコストを改善するイノベーションが注目を集めています。"
+                },
+                {
+                    "title": "宇宙旅行、一般人向けツアーの最新動向",
+                    "tags": ["宇宙", "旅行", "ロケット"],
+                    "source": "Space Today",
+                    "snippet": "宇宙への旅行が、一部の富裕層だけでなく、一般の人々にも手の届く時代になりつつあります。"
+                },
+                {
+                    "title": "メタバースとVRが変えるビジネスの未来",
+                    "tags": ["メタバース", "VR", "ビジネス"],
+                    "source": "Business Insights",
+                    "snippet": "仮想空間での会議や商品展示、イベント開催など、メタバースがもたらす新しいビジネスモデルが次々と登場しています。"
+                },
+                {
+                    "title": "サスティナブルファッション：循環型社会への挑戦",
+                    "tags": ["SDGs", "ファッション", "サスティナブル"],
+                    "source": "Eco Life",
+                    "snippet": "環境に配慮した素材選びや製造プロセス、古着のリサイクルなど、ファッション業界でもサスティナビリティへの取り組みが加速しています。"
+                },
+                {
+                    "title": "犬種図鑑：柴犬の魅力",
+                    "tags": ["動物", "犬", "ペット"],
+                    "source": "Animal World",
+                    "snippet": "日本の代表的な犬種である柴犬。その歴史や性格、飼育のポイントを解説します。"
+                },
+                {
+                    "title": "函館の夜景を巡る旅プラン",
+                    "tags": ["旅行", "国内旅行", "北海道"],
+                    "source": "Travel Guide",
+                    "snippet": "函館山から見る美しい夜景を堪能する、おすすめの旅行プランを紹介します。"
+                },
+                {
+                    "title": "寿司職人が教える、家庭でできる握り寿司のコツ",
+                    "tags": ["料理", "和食", "寿司"],
+                    "source": "Gourmet Magazine",
+                    "snippet": "新鮮なネタの選び方から、シャリの握り方まで、家庭で美味しい握り寿司を作るための秘訣を伝授します。"
+                },
+                {
+                    "title": "ヤフオク！で賢く売るコツ",
+                    "tags": ["ビジネス", "CtoC", "ヤフオク"],
+                    "source": "Yahoo! Auction Guide",
+                    "snippet": "フリマアプリやオークションサイトで商品を高く、早く売るためのポイントを紹介します。"
+                },
+                {
+                    "title": "雨雲レーダーでゲリラ豪雨を回避",
+                    "tags": ["天気", "予報", "防災"],
+                    "source": "Weather News",
+                    "snippet": "突然の雨に対応するため、雨雲レーダーを活用して豪雨を予測する方法を解説します。"
+                },
+                {
+                    "title": "ZOZOで楽しむ新しいファッション",
+                    "tags": ["ビジネス", "Eコマース", "ファッション", "ZOZO"],
+                    "source": "Fashion Trends",
+                    "snippet": "パーソナルカラー診断から、サイズに合わせたおすすめまで、オンラインショッピングの楽しみ方を提案します。"
+                },
+                {
+                    "title": "路線案内：スムーズな移動計画",
+                    "tags": ["旅行", "交通", "路線案内"],
+                    "source": "Travel & Life",
+                    "snippet": "乗り換え案内アプリを使って、目的地までの最適なルートを検索する便利機能を紹介します。"
+                },
+                {
+                    "title": "豆知識：トマトは野菜？それとも果物？",
+                    "tags": ["料理", "豆知識"],
+                    "source": "Food Trivia",
+                    "snippet": "実は法的な分類と植物学的な分類で答えが違うって知ってましたか？"
+                },
+                {
+                    "title": "トリビア：エッフェル塔の高さは夏と冬で変わる？",
+                    "tags": ["建築", "トリビア", "科学"],
+                    "source": "General Knowledge",
+                    "snippet": "熱膨張と収縮により、エッフェル塔の高さはわずかに変化します。"
+                },
+                {
+                    "title": "豆知識：なぜハチは針を刺すと死んでしまうのか",
+                    "tags": ["動物", "昆虫", "トリビア"],
+                    "source": "Nature Secrets",
+                    "snippet": "ハチの針には、獲物から抜けにくくするための特殊な構造があります。"
+                },
+                {
+                    "title": "トリビア：富士山の名前の由来",
+                    "tags": ["旅行", "歴史", "トリビア"],
+                    "source": "History Channel",
+                    "snippet": "「フジ」という名前には、さまざまな説が存在します。例えば、不死身の薬からきているという説も。"
                 }
-                if (!tagsResponse.ok) {
-                    throw new Error(`Tags fetch failed: ${tagsResponse.status}`);
-                }
-                
-                const articles = await articlesResponse.json();
-                const hierarchical_tags = await tagsResponse.json();
-                
-                inlineData = { articles, hierarchical_tags };
-                console.log('✅ 外部データファイルから読み込み完了');
-                console.log(`📰 記事数: ${articles.length}`);
-                console.log(`🏷️ タグ数: ${Object.keys(hierarchical_tags).length}`);
-                return true;
-            } catch (error) {
-                console.error('❌ データファイル読み込みエラー:', error);
-                console.warn('🔄 フォールバックデータを使用');
-                
-                // 完全なフォールバックデータ（元のinlineDataと同じ）
-                inlineData = {
-                    articles: [
-                        {
-                            "title": "AIが生成する新しい音楽の可能性",
-                            "tags": ["AI", "音楽", "技術"],
-                            "source": "Tech Journal",
-                            "snippet": "人工知能の進化により、作曲や演奏の分野で新たな可能性が広がっています。"
-                        },
-                        {
-                            "title": "電気自動車、バッテリー技術の次世代トレンド",
-                            "tags": ["電気自動車", "技術", "エネルギー", "SDGs"],
-                            "source": "Future Daily",
-                            "snippet": "全固体電池や新しい充電技術など、電気自動車の航続距離とコストを改善するイノベーションが注目を集めています。"
-                        },
-                        {
-                            "title": "宇宙旅行、一般人向けツアーの最新動向",
-                            "tags": ["宇宙", "旅行", "ロケット"],
-                            "source": "Space Today",
-                            "snippet": "宇宙への旅行が、一部の富裕層だけでなく、一般の人々にも手の届く時代になりつつあります。"
-                        },
-                        {
-                            "title": "メタバースとVRが変えるビジネスの未来",
-                            "tags": ["メタバース", "VR", "ビジネス"],
-                            "source": "Business Insights",
-                            "snippet": "仮想空間での会議や商品展示、イベント開催など、メタバースがもたらす新しいビジネスモデルが次々と登場しています。"
-                        },
-                        {
-                            "title": "サスティナブルファッション：循環型社会への挑戦",
-                            "tags": ["SDGs", "ファッション", "サスティナブル"],
-                            "source": "Eco Life",
-                            "snippet": "環境に配慮した素材選びや製造プロセス、古着のリサイクルなど、ファッション業界でもサスティナビリティへの取り組みが加速しています。"
-                        },
-                        {
-                            "title": "犬種図鑑：柴犬の魅力",
-                            "tags": ["動物", "犬", "ペット"],
-                            "source": "Animal World",
-                            "snippet": "日本の代表的な犬種である柴犬。その歴史や性格、飼育のポイントを解説します。"
-                        }
-                    ],
-                    hierarchical_tags: {
-                        "AI": ["機械学習", "自然言語処理", "画像認識"],
-                        "技術": ["半導体", "量子コンピューター", "クラウド"],
-                        "SDGs": ["循環型経済", "再生可能エネルギー", "サスティナブル"],
-                        "音楽": ["DTM", "楽器", "ライブ"],
-                        "電気自動車": ["バッテリー", "充電技術"],
-                        "宇宙": ["ISS", "スペースシャトル", "天体観測"],
-                        "旅行": ["秘境", "ツアー", "世界遺産", "国内旅行"],
-                        "ビジネス": ["スタートアップ", "マーケティング", "経営戦略"],
-                        "ファッション": ["アパレル", "デザイン", "ZOZO"],
-                        "動物": ["犬", "猫", "魚"],
-                        "犬": ["犬種", "飼育"],
-                        "ペット": ["飼育", "用品", "病気"]
-                    }
-                };
-                return false;
+            ],
+            "hierarchical_tags": {
+                "AI": ["機械学習", "自然言語処理", "画像認識"],
+                "機械学習": ["ディープラーニング", "教師あり学習", "強化学習"],
+                "技術": ["半導体", "量子コンピューター", "クラウド"],
+                "SDGs": ["循環型経済", "再生可能エネルギー", "貧困問題", "サスティナブル"],
+                "サスティナブル": ["エコ", "リサイクル", "環境保全"],
+                "音楽": ["DTM", "楽器", "ライブ"],
+                "電気自動車": ["バッテリー", "充電技術"],
+                "宇宙": ["ISS", "スペースシャトル", "天体観測"],
+                "旅行": ["秘境", "ツアー", "世界遺産", "国内旅行", "交通", "歴史"],
+                "国内旅行": ["北海道", "沖縄", "京都"],
+                "北海道": ["函館", "札幌"],
+                "函館": ["夜景", "朝市"],
+                "交通": ["路線案内", "乗り換え"],
+                "歴史": ["地理", "人物", "時代"],
+                "ロケット": ["ロケットエンジン", "打ち上げ"],
+                "メタバース": ["アバター", "VR空間"],
+                "VR": ["AR", "MR", "ゲーム"],
+                "ビジネス": ["スタートアップ", "マーケティング", "経営戦略", "Eコマース", "CtoC"],
+                "Eコマース": ["ヤフーショッピング", "ZOZO", "Amazon"],
+                "CtoC": ["ヤフオク", "メルカリ"],
+                "ファッション": ["アパレル", "デザイン", "ZOZO"],
+                "動物": ["犬", "猫", "魚", "昆虫"],
+                "犬": ["犬種", "飼育"],
+                "犬種": ["小型犬", "中型犬", "大型犬"],
+                "小型犬": ["トイプードル", "チワワ", "柴犬"],
+                "昆虫": ["ハチ", "カブトムシ", "チョウ"],
+                "料理": ["和食", "中華", "イタリアン", "豆知識"],
+                "和食": ["寿司", "天ぷら"],
+                "寿司": ["握り", "巻き"],
+                "天気": ["予報", "防災"],
+                "予報": ["雨雲レーダー", "天気予報"],
+                "防災": ["地震", "津波", "台風"],
+                "トリビア": ["雑学", "科学", "建築"],
+                "建築": ["歴史的建造物", "近代建築"],
+                "科学": ["物理", "化学", "生物"]
             }
         };
 
@@ -272,8 +387,6 @@
             const [showFavorites, setShowFavorites] = useState(false);
             const [showAiHelp, setShowAiHelp] = useState(false);
             const [interestDepth, setInterestDepth] = useState(50); // 興味の深さ（0-100）
-            const [favoriteReports, setFavoriteReports] = useState([]); // お気に入りレポートリスト
-            const [showFavoritesList, setShowFavoritesList] = useState(false); // お気に入りリスト表示状態
 
             // 初期タグの設定
             const initializeDefaultTags = () => {
@@ -364,168 +477,37 @@
                 }
             };
 
-            // お気に入りレポート管理（トグル機能付き）
-            const toggleFavorites = (reportData, event) => {
-                const newReport = {
-                    title: reportData.title,
-                    type: reportData.type,
-                    tags: reportData.tags,
-                    timestamp: new Date().toISOString(),
-                    articleCount: reportData.articleCount
-                };
-                
-                setFavoriteReports(prev => {
-                    // 既存チェック
-                    const existingIndex = prev.findIndex(report => 
-                        report.type === newReport.type && 
-                        JSON.stringify(report.tags.sort()) === JSON.stringify(newReport.tags.sort())
-                    );
-                    
-                    if (existingIndex !== -1) {
-                        // 既存の場合は削除（解除）
-                        if (event) {
-                            showCompletionAnimation(event.target, 'delete');
-                        }
-                        return prev.filter((_, index) => index !== existingIndex);
-                    } else {
-                        // 新規の場合は追加
-                        const reportId = `${reportData.type}_${reportData.tags.join('_')}_${Date.now()}`;
-                        const reportWithId = { ...newReport, id: reportId };
-                        
-                        if (event) {
-                            showCompletionAnimation(event.target, 'success');
-                        }
-                        return [...prev, reportWithId];
-                    }
-                });
-            };
-            
-            // 旧関数名との互換性のため
-            const addToFavorites = toggleFavorites;
-            
-            // お気に入り状態チェック
-            const isFavorite = (reportData) => {
-                return favoriteReports.some(report => 
-                    report.type === reportData.type && 
-                    JSON.stringify(report.tags.sort()) === JSON.stringify(reportData.tags.sort())
-                );
-            };
-
-            const removeFromFavorites = (reportId, event) => {
-                setFavoriteReports(prev => prev.filter(report => report.id !== reportId));
-                
-                // 削除時の完了アニメーション
-                if (event) {
-                    showCompletionAnimation(event.target, 'delete');
-                }
-            };
-
-            // 作業完了感のあるアニメーション
-            const showCompletionAnimation = (target, type) => {
-                if (!target) return;
-                
-                // ボタンの一時的な変更
-                const originalHTML = target.innerHTML;
-                const originalClass = target.getAttribute('class') || target.className || '';
-                
-                // アニメーション状態に変更
-                target.style.transform = 'scale(1.2)';
-                target.style.transition = 'all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-                
-                if (type === 'success') {
-                    target.innerHTML = `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 6L9 17l-5-5"/>
-                        </svg>
-                    `;
-                    target.setAttribute('class', String(originalClass).replace('text-gray-400', 'text-green-500'));
-                } else if (type === 'existing') {
-                    target.innerHTML = `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 6v6l4 2"/>
-                        </svg>
-                    `;
-                    target.setAttribute('class', String(originalClass).replace('text-gray-400', 'text-orange-500'));
-                } else if (type === 'delete') {
-                    target.innerHTML = `
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20 6L9 17l-5-5"/>
-                        </svg>
-                    `;
-                    target.setAttribute('class', String(originalClass).replace('text-gray-400', 'text-red-500'));
-                }
-                
-                // 波紋エフェクト
-                const ripple = document.createElement('div');
-                ripple.style.position = 'absolute';
-                ripple.style.borderRadius = '50%';
-                ripple.style.background = type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 
-                                         type === 'existing' ? 'rgba(249, 115, 22, 0.3)' : 
-                                         'rgba(239, 68, 68, 0.3)';
-                ripple.style.transform = 'scale(0)';
-                ripple.style.animation = 'ripple 0.6s linear';
-                ripple.style.width = '40px';
-                ripple.style.height = '40px';
-                ripple.style.left = '-12px';
-                ripple.style.top = '-12px';
-                ripple.style.pointerEvents = 'none';
-                
-                target.style.position = 'relative';
-                target.appendChild(ripple);
-                
-                // アニメーション終了後に元に戻す
-                setTimeout(() => {
-                    target.style.transform = 'scale(1)';
-                    setTimeout(() => {
-                        target.innerHTML = originalHTML;
-                        target.setAttribute('class', String(originalClass));
-                        target.style.transform = '';
-                        target.style.transition = '';
-                        if (ripple.parentNode) {
-                            ripple.parentNode.removeChild(ripple);
-                        }
-                    }, 200);
-                }, 400);
-            };
-
             // データ読み込み
             useEffect(() => {
-                const initializeData = async () => {
-                    await loadData();
-                    
-                    console.log('✅ データを使用');
-                    console.log('記事数:', inlineData.articles.length);
-                    
-                    // 記事に話題性スコアと静的サイズを追加
-                    const articlesWithTopicality = inlineData.articles.map(article => {
-                        const topicalityScore = calculateTopicalityScore(article);
-                        const staticGridSize = getStaticGridSize(topicalityScore);
-                        return {
-                            ...article,
-                            topicalityScore,
-                            staticGridSize
-                        };
-                    });
-                    
-                    console.log('話題性スコア付き記事:', articlesWithTopicality.map(a => ({ 
-                        title: a.title, 
-                        score: a.topicalityScore,
-                        size: a.staticGridSize
-                    })));
-                    
-                    setArticles(articlesWithTopicality);
-                    setHierarchicalTags(inlineData.hierarchical_tags);
-                    
-                    // 初期タグとリンクを設定
-                    const { defaultTags, defaultLinks } = initializeDefaultTags();
-                    setCollectedTags(defaultTags);
-                    setTagLinks(defaultLinks);
-                    
-                    setDataLoaded(true);
-                };
+                console.log('✅ インラインデータを使用');
+                console.log('記事数:', inlineData.articles.length);
                 
-                initializeData();
+                // 記事に話題性スコアと静的サイズを追加
+                const articlesWithTopicality = inlineData.articles.map(article => {
+                    const topicalityScore = calculateTopicalityScore(article);
+                    const staticGridSize = getStaticGridSize(topicalityScore);
+                    return {
+                        ...article,
+                        topicalityScore,
+                        staticGridSize
+                    };
+                });
+                
+                console.log('話題性スコア付き記事:', articlesWithTopicality.map(a => ({ 
+                    title: a.title, 
+                    score: a.topicalityScore,
+                    size: a.staticGridSize
+                })));
+                
+                setArticles(articlesWithTopicality);
+                setHierarchicalTags(inlineData.hierarchical_tags);
+                
+                // 初期タグとリンクを設定
+                const { defaultTags, defaultLinks } = initializeDefaultTags();
+                setCollectedTags(defaultTags);
+                setTagLinks(defaultLinks);
+                
+                setDataLoaded(true);
             }, []);
 
             const handleArticleRead = (article, event) => {
@@ -1192,8 +1174,8 @@
                                         >
                                             <svg width="16" height="16" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M15.725 11.55V19.8H7.47496V11.55H15.725ZM15.725 9.35H7.47496C6.25946 9.35 5.27496 10.3345 5.27496 11.55V19.8C5.27496 21.0155 6.25946 22 7.47496 22H15.725C16.9405 22 17.925 21.0155 17.925 19.8V11.55C17.925 10.3345 16.9405 9.35 15.725 9.35Z" fill="white"/>
-                                                <path fillRule="evenodd" clipRule="evenodd" d="M13.8 14.85H12.425V13.475C12.425 13.0185 12.0565 12.65 11.6 12.65C11.1435 12.65 10.775 13.0185 10.775 13.475V14.85H9.40001C8.94351 14.85 8.57501 15.2185 8.57501 15.675C8.57501 16.1315 8.94351 16.5 9.40001 16.5H10.775V17.875C10.775 18.3315 11.1435 18.7 11.6 18.7C12.0565 18.7 12.425 18.3315 12.425 17.875V16.5H13.8C14.2565 16.5 14.625 16.1315 14.625 15.675C14.625 15.2185 14.2565 14.85 13.8 14.85Z" fill="white"/>
-                                                <path fillRule="evenodd" clipRule="evenodd" d="M15.725 7.7H17.925V6.0445C17.925 5.753 17.8095 5.4725 17.606 5.269L12.678 0.3245C12.469 0.1155 12.1885 0 11.897 0H2.52501C1.30951 0 0.325012 0.9845 0.325012 2.2V19.8C0.325012 21.0155 1.30951 22 2.52501 22H3.62501V19.8H2.52501V2.2H11.391V5.5C11.391 6.105 11.886 6.6 12.491 6.6H15.725V7.7Z" fill="white"/>
+                                                <path fill-rule="evenodd" clip-rule="evenodd" d="M13.8 14.85H12.425V13.475C12.425 13.0185 12.0565 12.65 11.6 12.65C11.1435 12.65 10.775 13.0185 10.775 13.475V14.85H9.40001C8.94351 14.85 8.57501 15.2185 8.57501 15.675C8.57501 16.1315 8.94351 16.5 9.40001 16.5H10.775V17.875C10.775 18.3315 11.1435 18.7 11.6 18.7C12.0565 18.7 12.425 18.3315 12.425 17.875V16.5H13.8C14.2565 16.5 14.625 16.1315 14.625 15.675C14.625 15.2185 14.2565 14.85 13.8 14.85Z" fill="white"/>
+                                                <path fill-rule="evenodd" clip-rule="evenodd" d="M15.725 7.7H17.925V6.0445C17.925 5.753 17.8095 5.4725 17.606 5.269L12.678 0.3245C12.469 0.1155 12.1885 0 11.897 0H2.52501C1.30951 0 0.325012 0.9845 0.325012 2.2V19.8C0.325012 21.0155 1.30951 22 2.52501 22H3.62501V19.8H2.52501V2.2H11.391V5.5C11.391 6.105 11.886 6.6 12.491 6.6H15.725V7.7Z" fill="white"/>
                                             </svg>
                                             マップで関連記事を見る
                                         </button>
@@ -1292,33 +1274,6 @@
                                                         <h2 className="text-sm font-medium text-gray-700">
                                                             {selectedTags.join(' × ')} の集約レポート
                                                         </h2>
-                                                        <button
-                                                            onClick={(e) => addToFavorites({
-                                                                title: `${selectedTags.join(' × ')} の集約レポート`,
-                                                                type: 'aggregation',
-                                                                tags: selectedTags,
-                                                                articleCount: getMapFilteredArticles().length
-                                                            }, e)}
-                                                            className={`p-1 transition-colors pin-button ${
-                                                                isFavorite({
-                                                                    type: 'aggregation',
-                                                                    tags: selectedTags
-                                                                }) 
-                                                                ? 'text-blue-600 hover:text-blue-700' 
-                                                                : 'text-gray-400 hover:text-blue-600'
-                                                            }`}
-                                                            title={isFavorite({
-                                                                type: 'aggregation',
-                                                                tags: selectedTags
-                                                            }) ? "お気に入りから削除" : "お気に入りに追加"}
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite({
-                                                                type: 'aggregation',
-                                                                tags: selectedTags
-                                                            }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                                            </svg>
-                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1486,7 +1441,8 @@
                                     >
                                         <svg 
                                             id="mapSvg" 
-                                            className="w-full h-full network-bg"
+                                            className="w-full h-full"
+                                            style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}
                                         ></svg>
                                         
 
@@ -1499,7 +1455,11 @@
                                                     max="100"
                                                     value={interestDepth}
                                                     onChange={(e) => setInterestDepth(Number(e.target.value))}
-                                                    className="flex-1 h-2 bg-gray-300 rounded-full appearance-none cursor-pointer slider-thumb balance-bar-bg"
+                                                    className="flex-1 h-2 bg-gray-300 rounded-full appearance-none cursor-pointer slider-thumb"
+                                                    style={{
+                                                        background: `linear-gradient(to right, #ec4899 0%, #3b82f6 33%, #06b6d4 66%, #10b981 100%)`,
+                                                        backgroundSize: '100% 100%'
+                                                    }}
                                                 />
                                                 <button
                                                     onClick={() => setShowBalanceInfo(!showBalanceInfo)}
@@ -1697,11 +1657,11 @@
                                                                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                                                 />
                                                                 {/* 話題度インジケーター */}
-                                                                <div className={`absolute top-0.5 right-0.5 text-white px-1 py-0.5 rounded text-xs-small ${
+                                                                <div className={`absolute top-0.5 right-0.5 text-white text-xs px-1 py-0.5 rounded text-xs ${
                                                                     article.topicalityScore >= 80 ? 'bg-red-500' : 
                                                                     article.topicalityScore >= 60 ? 'bg-orange-500' : 
                                                                     article.topicalityScore >= 40 ? 'bg-yellow-600' : 'bg-gray-500/70'
-                                                                }`}>
+                                                                }`} style={{fontSize: '8px'}}>
                                                                     {Math.round(article.topicalityScore)}
                                                                 </div>
                                                             </div>
@@ -1743,7 +1703,13 @@
                                         
                                         {/* グリッドビュー（正方形固定） */}
                                         {mapViewMode === 'grid' && (
-                                            <div className="grid gap-1 w-full overflow-hidden -mx-1 article-grid">
+                                            <div className="grid gap-1 w-full overflow-hidden -mx-1" style={{
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))',
+                                                gridAutoFlow: 'dense',
+                                                gridAutoRows: 'minmax(60px, 1fr)',
+                                                alignItems: 'stretch',
+                                                width: 'calc(100% + 0.5rem)'
+                                            }}>
                                                 {getMapFilteredArticles().map((article, index) => {
                                                     const matchingTags = article.tags.filter(tag => selectedTags.includes(tag));
                                                     
@@ -1856,28 +1822,19 @@
                                     </svg>
                                 </button>
                                 
-                                {/* お気に入りリストボタン */}
+                                {/* フォローアイコン（マップビュー専用） */}
                                 <button
                                     onClick={() => {
-                                        try {
-                                            console.log('お気に入りボタンクリック、現在の状態:', showFavoritesList);
-                                            console.log('お気に入りレポート数:', favoriteReports.length);
-                                            setShowFavoritesList(!showFavoritesList);
-                                        } catch (error) {
-                                            console.error('お気に入りリスト表示エラー:', error);
-                                        }
+                                        // 将来的に他の機能に対応予定
+                                        console.log('フォローボタンがクリックされました');
                                     }}
-                                    className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all mx-0.5 relative"
-                                    title="お気に入りリスト"
+                                    className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all mx-0.5"
                                 >
-                                    <svg width="16" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                                    <svg width="18" height="22" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M15.725 11.55V19.8H7.47496V11.55H15.725ZM15.725 9.35H7.47496C6.25946 9.35 5.27496 10.3345 5.27496 11.55V19.8C5.27496 21.0155 6.25946 22 7.47496 22H15.725C16.9405 22 17.925 21.0155 17.925 19.8V11.55C17.925 10.3345 16.9405 9.35 15.725 9.35Z" fill="black" fillOpacity="0.73"/>
+                                        <path fillRule="evenodd" clipRule="evenodd" d="M13.8 14.85H12.425V13.475C12.425 13.0185 12.0565 12.65 11.6 12.65C11.1435 12.65 10.775 13.0185 10.775 13.475V14.85H9.40001C8.94351 14.85 8.57501 15.2185 8.57501 15.675C8.57501 16.1315 8.94351 16.5 9.40001 16.5H10.775V17.875C10.775 18.3315 11.1435 18.7 11.6 18.7C12.0565 18.7 12.425 18.3315 12.425 17.875V16.5H13.8C14.2565 16.5 14.625 16.1315 14.625 15.675C14.625 15.2185 14.2565 14.85 13.8 14.85Z" fill="black" fillOpacity="0.73"/>
+                                        <path fillRule="evenodd" clipRule="evenodd" d="M15.725 7.7H17.925V6.0445C17.925 5.753 17.8095 5.4725 17.606 5.269L12.678 0.3245C12.469 0.1155 12.1885 0 11.897 0H2.52501C1.30951 0 0.325012 0.9845 0.325012 2.2V19.8C0.325012 21.0155 1.30951 22 2.52501 22H3.62501V19.8H2.52501V2.2H11.391V5.5C11.391 6.105 11.886 6.6 12.491 6.6H15.725V7.7Z" fill="black" fillOpacity="0.73"/>
                                     </svg>
-                                    {favoriteReports.length > 0 && (
-                                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                            {favoriteReports.length}
-                                        </div>
-                                    )}
                                 </button>
                             </div>
                         </div>
@@ -1915,77 +1872,6 @@
                                 >
                                     ×
                                 </button>
-                            </div>
-                        )}
-                        
-                        {/* お気に入りリストモーダル */}
-                        {showFavoritesList && (
-                            <div className="absolute bottom-20 right-4 bg-white rounded-lg shadow-xl border w-80 max-h-96 overflow-hidden">
-                                <div className="p-4 border-b bg-gray-50">
-                                    <div className="flex justify-between items-center">
-                                        <h3 className="font-semibold text-gray-900">お気に入りレポート</h3>
-                                        <button
-                                            onClick={() => setShowFavoritesList(false)}
-                                            className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-xs"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div className="max-h-64 overflow-y-auto">
-                                    {favoriteReports.length === 0 ? (
-                                        <div className="p-4 text-center text-gray-500">
-                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-2 text-gray-300">
-                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                            </svg>
-                                            <p className="text-sm">お気に入りレポートがありません</p>
-                                            <p className="text-xs text-gray-400 mt-1">集約レポートのピンアイコンをクリックして追加できます</p>
-                                        </div>
-                                    ) : (
-                                        <div className="p-2">
-                                            {favoriteReports.map((report, index) => (
-                                                <div key={report.id || index} className="p-3 hover:bg-gray-50 rounded-lg mb-2 border border-gray-100">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex-1">
-                                                            <h4 className="text-sm font-medium text-gray-900 mb-1">{report.title || '無題のレポート'}</h4>
-                                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                                {(report.tags || []).map((tag, tagIndex) => (
-                                                                    <span key={tagIndex} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
-                                                                        {tag}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                            <div className="text-xs text-gray-500">
-                                                                {report.articleCount || 0}件の記事 • {report.timestamp ? new Date(report.timestamp).toLocaleDateString('ja-JP') : '日付不明'}
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => removeFromFavorites(report.id, e)}
-                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                            title="削除"
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            // レポートを再現
-                                                            setSelectedTags(report.tags || []);
-                                                            setShowFavorites(true);
-                                                            setShowFavoritesList(false);
-                                                        }}
-                                                        className="w-full mt-2 px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                                    >
-                                                        レポートを表示
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                         )}
                     </nav>
