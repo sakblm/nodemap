@@ -286,6 +286,42 @@
                 }
             }); // お気に入りレポートリスト
             const [showFavoritesList, setShowFavoritesList] = useState(false); // お気に入りリスト表示状態
+            const [longPressedArticle, setLongPressedArticle] = useState(null); // 長押し状態の記事
+
+            // 長押し機能
+            const handleLongPressStart = (reportId) => {
+                const timer = setTimeout(() => {
+                    setLongPressedArticle(reportId);
+                }, 500); // 500ms長押しで削除ボタン表示
+                return timer;
+            };
+
+            const handleLongPressEnd = (timer) => {
+                clearTimeout(timer);
+            };
+
+            // お気に入り記事削除
+            const deleteArticleFromFavorites = (reportId, event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                setFavoriteReports(prev => {
+                    const updatedReports = prev.filter(report => report.id !== reportId);
+                    try {
+                        localStorage.setItem('favoriteReports', JSON.stringify(updatedReports));
+                        console.log('🗑️ お気に入り記事削除完了:', reportId);
+                    } catch (error) {
+                        console.error('お気に入り削除保存エラー:', error);
+                    }
+                    return updatedReports;
+                });
+
+                // 長押し状態をリセット
+                setLongPressedArticle(null);
+            };
+
             // 初期タグの設定
             const initializeDefaultTags = () => {
                 const defaultTags = new Map();
@@ -1419,6 +1455,7 @@
                                 </div>
 
                                 {/* 記事表示 */}
+                                <div onClick={() => setLongPressedArticle(null)}>
                                 {(() => {
                                     const favoriteArticles = favoriteReports.filter(report => report.type === 'article');
                                     console.log('お気に入り記事一覧:', favoriteArticles);
@@ -1434,8 +1471,12 @@
                                                     favoriteArticles.map((report, index) => (
                                                         <div
                                                             key={report.id || index}
-                                                            className="aspect-square bg-white border border-gray-200 rounded cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+                                                            className="aspect-square bg-white border border-gray-200 rounded cursor-pointer hover:shadow-md transition-shadow overflow-hidden relative"
                                                             onClick={(e) => {
+                                                                // 長押し状態の時はクリックを無効にする
+                                                                if (longPressedArticle === report.id) {
+                                                                    return;
+                                                                }
                                                                 console.log('お気に入り記事クリック:', report);
                                                                 const article = report.articleData || {
                                                                     title: report.title?.replace('記事: ', '') || '無題の記事',
@@ -1448,6 +1489,29 @@
                                                                     handleArticleRead(article, e);
                                                                 } catch (error) {
                                                                     console.error('記事詳細表示エラー:', error);
+                                                                }
+                                                            }}
+                                                            onTouchStart={(e) => {
+                                                                const timer = handleLongPressStart(report.id);
+                                                                e.target._longPressTimer = timer;
+                                                            }}
+                                                            onTouchEnd={(e) => {
+                                                                if (e.target._longPressTimer) {
+                                                                    handleLongPressEnd(e.target._longPressTimer);
+                                                                }
+                                                            }}
+                                                            onMouseDown={(e) => {
+                                                                const timer = handleLongPressStart(report.id);
+                                                                e.target._longPressTimer = timer;
+                                                            }}
+                                                            onMouseUp={(e) => {
+                                                                if (e.target._longPressTimer) {
+                                                                    handleLongPressEnd(e.target._longPressTimer);
+                                                                }
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                if (e.target._longPressTimer) {
+                                                                    handleLongPressEnd(e.target._longPressTimer);
                                                                 }
                                                             }}
                                                         >
@@ -1463,6 +1527,21 @@
                                                                     {report.articleData?.title || report.title?.replace('記事: ', '')}
                                                                 </div>
                                                             </div>
+
+                                                            {/* 長押し時の削除ボタン */}
+                                                            {longPressedArticle === report.id && (
+                                                                <div className="absolute inset-0 bg-black bg-opacity-40">
+                                                                    <button
+                                                                        onClick={(e) => deleteArticleFromFavorites(report.id, e)}
+                                                                        className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-gray-600 shadow-lg hover:bg-gray-100 transition-colors"
+                                                                        title="削除"
+                                                                    >
+                                                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                            <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))
                                                 )}
@@ -1480,7 +1559,7 @@
                                                     favoriteArticles.map((report, index) => (
                                                         <div
                                                             key={report.id || index}
-                                                            className="bg-white rounded-lg p-3 shadow-sm border hover:shadow-md transition-all cursor-pointer"
+                                                            className="bg-white rounded-lg p-3 shadow-sm border hover:shadow-md transition-all cursor-pointer relative"
                                                             onClick={(e) => {
                                                                 console.log('お気に入り記事クリック:', report);
                                                                 const article = report.articleData || {
@@ -1517,6 +1596,17 @@
                                                                         <span>お気に入り</span>
                                                                     </div>
                                                                 </div>
+
+                                                            {/* リスト表示の削除ボタン（右上） */}
+                                                            <button
+                                                                onClick={(e) => deleteArticleFromFavorites(report.id, e)}
+                                                                className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm transition-colors border"
+                                                                title="削除"
+                                                            >
+                                                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                                </svg>
+                                                            </button>
                                                             </div>
                                                         </div>
                                                     ))
@@ -1525,6 +1615,7 @@
                                         );
                                     }
                                 })()}
+                                </div>
                             </div>
                         </main>
 
