@@ -1370,7 +1370,7 @@
                                     {favoriteReports.filter(report => report.type === 'aggregated').map((report, index) => (
                                         <div
                                             key={report.id || index}
-                                            className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
+                                            className="bg-white rounded-xl border border-gray-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
                                             onClick={() => {
                                                 // レポートを再現してメインページに戻る
                                                 setSelectedTags(report.tags || []);
@@ -1381,14 +1381,14 @@
                                         >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center flex-1">
-                                                        <span className="text-lg font-medium text-gray-900">
+                                                        <span className="text-sm font-medium text-gray-900">
                                                             {(report.tags || []).join(' × ') || '無題のレポート'}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center space-x-3 ml-4">
+                                                    <div className="flex items-center space-x-2 ml-4">
                                                         {/* 時計アイコン */}
                                                         <button
-                                                            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                                                            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
                                                             title="最終更新日時"
                                                         >
                                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1402,7 +1402,7 @@
                                                                 e.stopPropagation();
                                                                 removeFromFavorites(report.id, e);
                                                             }}
-                                                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                                                             title="削除"
                                                         >
                                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1420,7 +1420,7 @@
                             {/* 記事セクション */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-medium text-gray-900">記事</h2>
+                                    <h2 className="text-lg font-bold text-gray-900">最新記事</h2>
                                     <div className="flex bg-gray-100 rounded-lg p-1 shadow-sm">
                                         <button
                                             onClick={() => setFavoritesViewMode('grid')}
@@ -1465,7 +1465,7 @@
                                             <div className="grid grid-cols-3 gap-2">
                                                 {favoriteArticles.length === 0 ? (
                                                     <div className="col-span-3 text-center py-8 text-gray-500">
-                                                        お気に入り記事がありません
+                                                        更新がありません
                                                     </div>
                                                 ) : (
                                                     favoriteArticles.map((report, index) => (
@@ -1553,7 +1553,7 @@
                                             <div className="space-y-3">
                                                 {favoriteArticles.length === 0 ? (
                                                     <div className="text-center py-8 text-gray-500">
-                                                        お気に入り記事がありません
+                                                        更新がありません
                                                     </div>
                                                 ) : (
                                                     favoriteArticles.map((report, index) => (
