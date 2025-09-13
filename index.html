@@ -377,6 +377,8 @@
 
             // お気に入りレポート管理（トグル機能付き）
             const toggleFavorites = (reportData, event) => {
+                console.log('🔖 toggleFavorites呼び出し:', reportData);
+                console.log('📍 呼び出し元のスタックトレース:', new Error().stack);
                 const newReport = {
                     title: reportData.title,
                     type: reportData.type,
@@ -384,13 +386,24 @@
                     timestamp: new Date().toISOString(),
                     articleCount: reportData.articleCount
                 };
+
+                // 記事データがある場合のみ追加
+                if (reportData.articleData) {
+                    newReport.articleData = reportData.articleData;
+                }
                 
                 setFavoriteReports(prev => {
-                    // 既存チェック
-                    const existingIndex = prev.findIndex(report =>
-                        report.type === newReport.type &&
-                        JSON.stringify(report.tags.sort()) === JSON.stringify(newReport.tags.sort())
-                    );
+                    // 既存チェック（記事の場合はタイトルで、レポートの場合はタグで判定）
+                    const existingIndex = prev.findIndex(report => {
+                        if (report.type === 'article' && newReport.type === 'article') {
+                            // 記事の場合はタイトルで重複チェック
+                            return report.title === newReport.title;
+                        } else if (report.type === 'aggregated' && newReport.type === 'aggregated') {
+                            // 集約レポートの場合はタグで重複チェック
+                            return JSON.stringify(report.tags.sort()) === JSON.stringify(newReport.tags.sort());
+                        }
+                        return false;
+                    });
 
                     let updatedReports;
                     if (existingIndex !== -1) {
@@ -413,7 +426,10 @@
                     // ローカルストレージに保存
                     try {
                         localStorage.setItem('favoriteReports', JSON.stringify(updatedReports));
-                        console.log('お気に入り保存完了:', updatedReports);
+                        console.log('💾 お気に入り保存完了:', updatedReports);
+                        console.log('📊 現在のお気に入り数:', updatedReports.length);
+                        console.log('📝 記事タイプの数:', updatedReports.filter(r => r.type === 'article').length);
+                        console.log('📋 集約タイプの数:', updatedReports.filter(r => r.type === 'aggregated').length);
                     } catch (error) {
                         console.error('お気に入り保存エラー:', error);
                     }
@@ -427,10 +443,16 @@
             
             // お気に入り状態チェック
             const isFavorite = (reportData) => {
-                return favoriteReports.some(report => 
-                    report.type === reportData.type && 
-                    JSON.stringify(report.tags.sort()) === JSON.stringify(reportData.tags.sort())
-                );
+                return favoriteReports.some(report => {
+                    if (report.type === 'article' && reportData.type === 'article') {
+                        // 記事の場合はタイトルで判定
+                        return report.title === reportData.title;
+                    } else if (report.type === 'aggregated' && reportData.type === 'aggregated') {
+                        // 集約レポートの場合はタグで判定
+                        return JSON.stringify(report.tags.sort()) === JSON.stringify(reportData.tags.sort());
+                    }
+                    return false;
+                });
             };
 
             const removeFromFavorites = (reportId, event) => {
@@ -1298,7 +1320,8 @@
                             {/* 集約レポート セクション */}
                             <div className="mb-8">
                                 <h2 className="text-xl font-bold text-gray-900 mb-6">レポート</h2>
-                                {favoriteReports.length === 0 ? (
+                                {console.log('📋 お気に入り表示チェック:', favoriteReports)}
+                                {favoriteReports.filter(report => report.type === 'aggregated').length === 0 ? (
                                 <div className="text-center py-12">
                                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-4 text-gray-300">
                                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
@@ -1308,7 +1331,7 @@
                                 </div>
                             ) : (
                                     <div className="space-y-3">
-                                    {favoriteReports.map((report, index) => (
+                                    {favoriteReports.filter(report => report.type === 'aggregated').map((report, index) => (
                                         <div
                                             key={report.id || index}
                                             className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
@@ -1742,6 +1765,7 @@
                                             {/* お気に入りボタン */}
                                             <button
                                                 onClick={(e) => {
+                                                    console.log('📊 集約レポートお気に入りボタンクリック:', selectedTags.join(' × '));
                                                     e.stopPropagation();
                                                     toggleFavorites({
                                                         title: `集約レポート: ${selectedTags.join(' × ')}`,
@@ -2213,30 +2237,36 @@
                                                                     {/* お気に入りボタン */}
                                                                     <button
                                                                         onClick={(e) => {
+                                                                            console.log('⭐ 記事お気に入りボタンクリック:', article.title);
                                                                             e.stopPropagation();
                                                                             toggleFavorites({
-                                                                                title: `記事: ${article.title}`,
+                                                                                title: article.title,
                                                                                 type: 'article',
                                                                                 tags: article.tags,
                                                                                 articleCount: 1,
-                                                                                articleData: article
+                                                                                articleData: {
+                                                                                    title: article.title,
+                                                                                    snippet: article.snippet,
+                                                                                    source: article.source,
+                                                                                    tags: article.tags
+                                                                                }
                                                                             }, e);
                                                                         }}
                                                                         className={`ml-2 flex-shrink-0 ${
                                                                             isFavorite({
-                                                                                title: `記事: ${article.title}`,
+                                                                                title: article.title,
                                                                                 type: 'article',
                                                                                 tags: article.tags
                                                                             }) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
                                                                         } transition-colors`}
                                                                         title={isFavorite({
-                                                                            title: `記事: ${article.title}`,
+                                                                            title: article.title,
                                                                             type: 'article',
                                                                             tags: article.tags
                                                                         }) ? "お気に入りから削除" : "お気に入りに追加"}
                                                                     >
                                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill={isFavorite({
-                                                                            title: `記事: ${article.title}`,
+                                                                            title: article.title,
                                                                             type: 'article',
                                                                             tags: article.tags
                                                                         }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
