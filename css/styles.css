@@ -149,3 +149,8 @@
     background: linear-gradient(to right, #ec4899 0%, #3b82f6 33%, #06b6d4 66%, #10b981 100%);
     background-size: 100% 100%;
 }
+
+/* Force font-bold to override global font settings */
+.font-bold {
+    font-weight: 700 !important;
+}
