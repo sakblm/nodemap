@@ -551,6 +551,7 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                     const topicsData = await generateTopicsData(selectedTags);
                     const newsData = await generateNewsData(selectedTags);
                     const trendsData = await generateTrendsData(selectedTags);
+                    const keywordsData = generateKeywords(selectedTags);
 
                     setReportLoadingProgress(80);
 
@@ -561,6 +562,7 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                         topics: topicsData,
                         news: newsData,
                         trends: trendsData,
+                        keywords: keywordsData,
                         timestamp: new Date().toISOString(),
                         generatedBy: 'Visual Analytics System'
                     };
@@ -658,6 +660,82 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                         color: `hsl(${(index * 120) % 360}, 65%, 55%)`
                     };
                 });
+            };
+
+            // キーワード生成機能
+            const generateKeywords = (tags) => {
+                const keywordTemplates = {
+                    'AI': {
+                        trending: ['ChatGPT', 'GPT-4', 'Gemini', '生成AI', 'LLM', 'プロンプト', 'ファインチューニング'],
+                        related: ['機械学習', 'ディープラーニング', 'ニューラルネットワーク', 'RNN', 'CNN', 'Transformer'],
+                        hot: ['AI規制', 'AI倫理', 'AGI', 'マルチモーダル', 'RAG', 'AI Agent']
+                    },
+                    '技術': {
+                        trending: ['クラウド', 'DevOps', 'マイクロサービス', 'コンテナ', 'Kubernetes', 'サーバーレス'],
+                        related: ['プログラミング', 'データベース', 'API', 'フロントエンド', 'バックエンド', 'フルスタック'],
+                        hot: ['Web3', 'メタバース', 'AR/VR', '量子コンピュータ', 'エッジコンピューティング', '5G']
+                    },
+                    '料理': {
+                        trending: ['時短レシピ', 'ヘルシー', '作り置き', '一人暮らし', '節約', 'お弁当'],
+                        related: ['和食', '洋食', '中華', 'イタリアン', 'フレンチ', 'エスニック'],
+                        hot: ['プラントベース', 'グルテンフリー', '発酵食品', 'スーパーフード', 'ミールキット', 'フードテック']
+                    },
+                    '旅行': {
+                        trending: ['国内旅行', '温泉', 'グランピング', '一人旅', 'ワーケーション', '聖地巡礼'],
+                        related: ['観光', 'ホテル', '航空券', 'レンタカー', 'ツアー', 'バックパッカー'],
+                        hot: ['サステナブル旅行', 'リモートワーク', 'デジタルノマド', '地方創生', 'オーバーツーリズム', 'VR旅行']
+                    },
+                    '健康': {
+                        trending: ['筋トレ', 'ヨガ', 'ランニング', 'ダイエット', '睡眠', 'メンタルヘルス'],
+                        related: ['フィットネス', '栄養', 'サプリ', 'ストレッチ', '瞑想', 'マッサージ'],
+                        hot: ['パーソナライズ医療', 'ウェアラブル', 'テレヘルス', '予防医学', '腸活', 'マインドフルネス']
+                    },
+                    '動物': {
+                        trending: ['犬', '猫', 'ハムスター', '鳥', '爬虫類', '熱帯魚'],
+                        related: ['ペット', '飼育', 'しつけ', 'エサ', '病気', 'トリミング'],
+                        hot: ['動物愛護', '保護猫', '野生動物', '生物多様性', 'アニマルセラピー', 'ペットテック']
+                    }
+                };
+
+                const mainTag = tags[0];
+                const template = keywordTemplates[mainTag];
+
+                if (template) {
+                    return {
+                        trending: shuffleArray(template.trending).slice(0, Math.min(8, template.trending.length)),
+                        related: shuffleArray(template.related).slice(0, Math.min(8, template.related.length)),
+                        hot: shuffleArray(template.hot).slice(0, Math.min(8, template.hot.length))
+                    };
+                }
+
+                // デフォルトキーワード
+                return {
+                    trending: [`${mainTag}技術`, `${mainTag}トレンド`, `${mainTag}ニュース`, `${mainTag}業界`, `${mainTag}最新`],
+                    related: [`${mainTag}関連`, `${mainTag}応用`, `${mainTag}事例`, `${mainTag}導入`, `${mainTag}活用`],
+                    hot: [`${mainTag}革新`, `${mainTag}未来`, `${mainTag}進化`, `${mainTag}変革`, `${mainTag}発展`]
+                };
+            };
+
+            // 配列をシャッフルする関数
+            const shuffleArray = (array) => {
+                const newArray = [...array];
+                for (let i = newArray.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+                }
+                return newArray;
+            };
+
+            // キーワードクリック時の処理
+            const handleKeywordClick = async (keyword) => {
+                console.log('🔍 キーワードクリック:', keyword);
+
+                // 新しいタグとして設定
+                const newTags = [keyword];
+                setSelectedTags(newTags);
+
+                // 新しいレポートを生成
+                await generateVisualReport(newTags, articles);
             };
 
             // 長押し機能
@@ -2396,6 +2474,69 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {/* キーワードセクション */}
+                                        {generatedReport && generatedReport.keywords && (
+                                            <div className="mx-4 mb-6">
+                                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                                    <div className="space-y-4">
+                                                        {/* 急上昇ワード */}
+                                                        <div>
+                                                            <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                🔥 急上昇ワード
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {generatedReport.keywords.trending.map((keyword, index) => (
+                                                                    <button
+                                                                        key={index}
+                                                                        onClick={() => handleKeywordClick(keyword)}
+                                                                        className={`px-3 py-1.5 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-full text-sm font-${selectedFont} text-red-700 hover:from-red-100 hover:to-orange-100 hover:border-red-300 transition-all cursor-pointer`}
+                                                                    >
+                                                                        # {keyword}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* 関連キーワード */}
+                                                        <div>
+                                                            <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                🔗 関連キーワード
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {generatedReport.keywords.related.map((keyword, index) => (
+                                                                    <button
+                                                                        key={index}
+                                                                        onClick={() => handleKeywordClick(keyword)}
+                                                                        className={`px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-full text-sm font-${selectedFont} text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all cursor-pointer`}
+                                                                    >
+                                                                        # {keyword}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* 話題キーワード */}
+                                                        <div>
+                                                            <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                💡 話題キーワード
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {generatedReport.keywords.hot.map((keyword, index) => (
+                                                                    <button
+                                                                        key={index}
+                                                                        onClick={() => handleKeywordClick(keyword)}
+                                                                        className={`px-3 py-1.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-full text-sm font-${selectedFont} text-purple-700 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all cursor-pointer`}
+                                                                    >
+                                                                        # {keyword}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* ビジュアル分析レポート表示 */}
                                         {generatedReport && generatedReport.topics && (
