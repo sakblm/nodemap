@@ -1784,7 +1784,7 @@
                                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                         </svg>
                                         {favoriteReports.length > 0 && (
-                                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-handwriting rounded-full w-5 h-5 flex items-center justify-center">
+                                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-normal rounded-full w-5 h-5 flex items-center justify-center">
                                                 {favoriteReports.length}
                                             </div>
                                         )}
@@ -2103,7 +2103,7 @@
                                                                     alt={article.title}
                                                                     className="w-full h-full object-cover"
                                                                 />
-                                                                <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                                                                <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-normal">
                                                                     #{index + 1}
                                                                 </div>
                                                             </div>
@@ -2510,7 +2510,7 @@
                                                                             </span>
                                                                         ))}
                                                                         {article.tags.length > 2 && (
-                                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">
+                                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs font-normal rounded-full">
                                                                                 +{article.tags.length - 2}
                                                                             </span>
                                                                         )}
@@ -2563,7 +2563,7 @@
                                                             
                                                             {/* マッチング数インジケーター */}
                                                             {matchingTags.length > 0 && (
-                                                                <div className="absolute top-2 left-2 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full font-medium">
+                                                                <div className="absolute top-2 left-2 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full font-normal font-medium">
                                                                     {matchingTags.length}
                                                                 </div>
                                                             )}
@@ -2579,7 +2579,7 @@
                                                             
                                                             {/* HOTバッジ */}
                                                             {article.topicalityScore >= 80 && (
-                                                                <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                                                                <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-normal font-bold">
                                                                     HOT
                                                                 </div>
                                                             )}
@@ -2666,7 +2666,7 @@
                                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                     </svg>
                                     {favoriteReports.length > 0 && (
-                                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-normal rounded-full w-5 h-5 flex items-center justify-center">
                                             {favoriteReports.length}
                                         </div>
                                     )}
