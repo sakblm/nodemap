@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイクラ × Vtuber レポート</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        /* --- 全体スタイル --- */
+        :root {
+            --primary-color: #5865F2; /* Discordのような紫 */
+            --secondary-color: #57F287; /* マイクラっぽい緑 */
+            --text-color: #e0e0e0;
+            --bg-color: #2c2f33; /* 暗めの背景 */
+            --card-bg-color: #36393f;
+            --border-color: #40444b;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        html, body {
+            overflow-x: hidden;
+            background-color: var(--bg-color);
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-color);
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- ヘッダー --- */
+        header {
+            background-color: var(--card-bg-color);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #fff;
+        }
+        header p {
+            margin: 4px 0 0;
+            color: #b9bbbe;
+            font-size: 14px;
+        }
+
+        /* --- ナビゲーション --- */
+        nav {
+            display: flex;
+            overflow-x: auto;
+            background-color: var(--card-bg-color);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        nav::-webkit-scrollbar {
+            display: none;
+        }
+        .nav-link {
+            flex: 0 0 auto;
+            padding: 12px 18px;
+            text-decoration: none;
+            color: #b9bbbe;
+            font-weight: 600;
+            font-size: 15px;
+            white-space: nowrap;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link.active {
+            color: #fff;
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* --- メインコンテンツ --- */
+        main {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        .content-wrapper {
+            display: flex;
+            height: 100%;
+            transition: transform 0.3s ease-in-out;
+        }
+        .content-section {
+            width: 100%;
+            flex-shrink: 0;
+            padding: 24px 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+        }
+        .section-title i {
+            margin-right: 10px;
+            color: var(--secondary-color);
+        }
+
+        /* --- プレースホルダー --- */
+        .placeholder-img {
+            background-color: #4f545c;
+            width: 100%;
+            display: block;
+            border-radius: 8px;
+        }
+
+        /* --- コンテンツ特有スタイル --- */
+        .card {
+            background-color: var(--card-bg-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .card-content {
+            padding: 16px;
+        }
+
+        /* 配信スケジュール */
+        .stream-card {
+            display: flex;
+            align-items: center;
+        }
+        .stream-card .placeholder-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%; /* 丸アイコン */
+            flex-shrink: 0;
+        }
+        .stream-info {
+            flex-grow: 1;
+            margin-left: 16px;
+        }
+        .stream-info .title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        .stream-info .channel {
+            font-size: 14px;
+            color: #b9bbbe;
+            margin-bottom: 6px;
+        }
+        .stream-time {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+        .live-badge {
+            display: inline-block;
+            background-color: #f04747;
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* 急上昇クリップ */
+        .clip-card h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+        }
+        .clip-card p {
+            margin: 0;
+            font-size: 13px;
+            color: #b9bbbe;
+        }
+        
+        /* サーバー情報 */
+        .server-card {
+            text-align: center;
+        }
+        .server-card h3 {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+        .server-card .player-icons {
+            display: flex;
+            justify-content: center;
+            gap: -10px; /* アイコンを重ねる */
+            margin-bottom: 12px;
+        }
+        .player-icons .placeholder-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--card-bg-color);
+        }
+        .server-card p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* 建築ギャラリー */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .gallery-card p {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>マイクラ × Vtuber レポート</h1>
+            <p><i class="fa-solid fa-gamepad"></i> 今日の注目配信とサーバー情報</p>
+        </header>
+
+        <nav>
+            <a class="nav-link active" data-index="0">配信予定</a>
+            <a class="nav-link" data-index="1">急上昇クリップ</a>
+            <a class="nav-link" data-index="2">サーバー情報</a>
+            <a class="nav-link" data-index="3">建築ギャラリー</a>
+        </nav>
+
+        <main>
+            <div class="content-wrapper">
+                <section class="content-section">
+                    <h2 class="section-title"><i class="fa-solid fa-video"></i> 配信スケジュール</h2>
+                    <div class="card stream-card">
+                        <div class="placeholder-img"></div>
+                        <div class="stream-info">
+                            <div class="channel">猫々きのこ</div>
+                            <div class="title">【マイクラ】視聴者参加型！きのこ王国を作るにゃ！</div>
+                            <span class="stream-time">19:00 START <span class="live-badge">LIVE</span></span>
+                        </div>
+                    </div>
+                    <div class="card stream-card">
+                        <div class="placeholder-img"></div>
+                        <div class="stream-info">
+                            <div class="channel">犬飼ぽち</div>
+                            <div class="title">【Minecraft】エンドラ討伐、ついに出発！【#ぽちくら】</div>
+                             <span class="stream-time">21:00 START</span>
+                        </div>
+                    </div>
+                     <div class="card stream-card">
+                        <div class="placeholder-img"></div>
+                        <div class="stream-info">
+                            <div class="channel">電脳寺ハルト</div>
+                            <div class="title">巨大建築プロジェクト#3 レールを敷設していく</div>
+                             <span class="stream-time">22:00 START</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-section">
+                    <h2 class="section-title"><i class="fa-solid fa-arrow-trend-up"></i> 急上昇クリップ</h2>
+                    <div class="card clip-card">
+                        <div class="placeholder-img" style="height: 180px;"></div>
+                        <div class="card-content">
+                            <h3>まさかの結末！ダイヤ探しで起きた奇跡</h3>
+                            <p>犬飼ぽち / 12万回視聴</p>
+                        </div>
+                    </div>
+                    <div class="card clip-card">
+                        <div class="placeholder-img" style="height: 180px;"></div>
+                        <div class="card-content">
+                            <h3>【神回】天才的な回路で煽り装置を作るハルト</h3>
+                            <p>電脳寺ハルト / 9.8万回視聴</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-section">
+                    <h2 class="section-title"><i class="fa-solid fa-server"></i> V鯖（Vtuberサーバー）瓦版</h2>
+                    <div class="card server-card">
+                         <div class="card-content">
+                             <h3>きのこ王国、城下町が拡大中！</h3>
+                             <div class="player-icons">
+                                <div class="placeholder-img"></div>
+                                <div class="placeholder-img"></div>
+                                <div class="placeholder-img"></div>
+                                <div class="placeholder-img"></div>
+                             </div>
+                            <p>きのこ王国の城下町エリアに新しい住民が続々参加！ぽちさん設計のパン屋がオープンし、ハルトさんが自動収穫機を建設。今後の発展から目が離せない！</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-section">
+                    <h2 class="section-title"><i class="fa-solid fa-cubes"></i> 神建築ギャラリー</h2>
+                    <div class="gallery-grid">
+                        <div class="card gallery-card">
+                            <div class="placeholder-img" style="height: 120px;"></div>
+                            <div class="card-content">
+                                <p>天空の城</p>
+                            </div>
+                        </div>
+                        <div class="card gallery-card">
+                            <div class="placeholder-img" style="height: 120px;"></div>
+                            <div class="card-content">
+                                <p>海底神殿</p>
+                            </div>
+                        </div>
+                        <div class="card gallery-card">
+                            <div class="placeholder-img" style="height: 120px;"></div>
+                            <div class="card-content">
+                                <p>和風城下町</p>
+                            </div>
+                        </div>
+                        <div class="card gallery-card">
+                            <div class="placeholder-img" style="height: 120px;"></div>
+                            <div class="card-content">
+                                <p>自動仕分け倉庫</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // このスクリプトは前のコードと全く同じです
+        document.addEventListener('DOMContentLoaded', function () {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentWrapper = document.querySelector('.content-wrapper');
+            const sections = document.querySelectorAll('.content-section');
+            let currentIndex = 0;
+            let touchStartX = 0;
+            let touchEndX = 0;
+
+            function updateContent(index) {
+                navLinks.forEach(link => link.classList.remove('active'));
+                const activeLink = document.querySelector(`.nav-link[data-index="${index}"]`);
+                if (activeLink) {
+                    activeLink.classList.add('active');
+                    activeLink.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+                contentWrapper.style.transform = `translateX(-${index * 100}%)`;
+                currentIndex = index;
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    const index = parseInt(link.dataset.index, 10);
+                    updateContent(index);
+                });
+            });
+
+            contentWrapper.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            contentWrapper.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            });
+
+            function handleSwipe() {
+                const swipeThreshold = 50;
+                const diffX = touchEndX - touchStartX;
+                if (Math.abs(diffX) > swipeThreshold) {
+                    if (diffX < 0 && currentIndex < sections.length - 1) {
+                        currentIndex++;
+                    } else if (diffX > 0 && currentIndex > 0) {
+                        currentIndex--;
+                    }
+                    updateContent(currentIndex);
+                }
+            }
+            updateContent(0);
+        });
+    </script>
+</body>
+</html>
