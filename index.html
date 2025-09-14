@@ -1279,7 +1279,7 @@
                                         {/* コンテンツ */}
                                         <div className="p-6">
                                             {/* タイトル */}
-                                            <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+                                            <h1 className={`text-2xl font-bold font-${selectedFont} text-gray-900 mb-4 leading-tight`}>
                                                 {selectedArticle.title}
                                             </h1>
 
@@ -1301,16 +1301,16 @@
 
                                             {/* 記事本文 */}
                                             <div className="prose max-w-none mb-6">
-                                                <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                                <p className={`text-gray-700 leading-relaxed text-base mb-4 font-${selectedFont}`}>
                                                     {selectedArticle.snippet}
                                                 </p>
 
                                                 {/* 詳細内容（サンプル） */}
-                                                <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                                <p className={`text-gray-700 leading-relaxed text-base mb-4 font-${selectedFont}`}>
                                                     この記事では、{selectedArticle.title}について詳しく解説します。最新の動向や技術的な詳細、今後の展望についても触れながら、読者の皆様にとって有益な情報をお届けします。
                                                 </p>
 
-                                                <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                                <p className={`text-gray-700 leading-relaxed text-base mb-4 font-${selectedFont}`}>
                                                     {(selectedArticle.tags || []).includes('AI') && 'AI技術の進歩により、私たちの生活は大きく変化しています。'}
                                                     {(selectedArticle.tags || []).includes('技術') && 'この技術革新は、産業界全体に影響を与えています。'}
                                                     {(selectedArticle.tags || []).includes('ビジネス') && 'ビジネスの世界では、新しいビジネスモデルが次々と生まれています。'}
@@ -1514,7 +1514,7 @@
                             {/* 記事セクション */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className={`text-xl font-${selectedFont} text-gray-900`}>関連の最新記事</h2>
+                                    <h2 className={`text-xl font-${selectedFont} text-gray-900`}>お気に入り記事</h2>
                                     <div className="flex bg-gray-100 rounded-lg p-1 shadow-sm">
                                         <button
                                             onClick={() => setFavoritesViewMode('grid')}
