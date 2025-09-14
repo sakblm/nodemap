@@ -1076,7 +1076,26 @@
                         .attr("y", d => d.y);
                 });
 
-            }, [currentView, tagsArray, tagLinks, interestDepth, selectedTags]);
+            }, [currentView, tagsArray, tagLinks, interestDepth]);
+
+            // selectedTagsが変更された時だけノードのスタイルを更新
+            useEffect(() => {
+                if (currentView !== 'map') return;
+
+                const svg = d3.select("#mapSvg");
+                if (!svg.node()) return;
+
+                // ノードのスタイルのみ更新
+                svg.selectAll("circle")
+                    .style("stroke-width", d => selectedTags.includes(d.id) ? 4 : 2)
+                    .style("stroke", d => selectedTags.includes(d.id) ? "#fbbf24" : "rgba(255, 255, 255, 0.8)");
+
+                // テキストのスタイルのみ更新
+                svg.selectAll("text")
+                    .style("fill", d => selectedTags.includes(d.id) ? "#fbbf24" : "white")
+                    .style("font-weight", d => selectedTags.includes(d.id) ? "700" : "600");
+
+            }, [selectedTags, currentView]);
             
             // 選択ノードに関連するコンテキストタグを取得
             const getContextualTags = (selectedTag, interestLevel) => {
@@ -1207,7 +1226,7 @@
                     setCollectedTags(updatedTags);
                     setTagLinks(updatedLinks);
                 }
-            }, [currentView, interestDepth, selectedTags]);
+            }, [currentView, interestDepth]);
 
             // データ読み込み中の表示
             if (!dataLoaded) {
