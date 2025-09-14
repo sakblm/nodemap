@@ -2151,20 +2151,25 @@
                                     </>
                                 ) : (
                                     /* タグ未選択時の表示 */
-                                    <div className="text-center py-16 mx-4">
-                                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <svg width="32" height="26" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path fillRule="evenodd" clipRule="evenodd" d="M20.4119 1.54257C18.2944 -0.514191 14.8606 -0.514191 12.7426 1.54257L11.0003 3.23455L9.25744 1.54257C7.13997 -0.514191 3.70618 -0.514191 1.5881 1.54257C-0.529368 3.59754 -0.529368 6.93108 1.5881 8.98665L3.33158 10.6792L3.33097 10.6798L10.7834 17.9127C10.9025 18.0291 11.0975 18.0291 11.2172 17.9127L11.8528 17.2953C11.8534 17.2953 11.8534 17.2953 11.8534 17.2947L18.669 10.6798L18.6684 10.6792L20.4119 8.98665C22.5294 6.93108 22.5294 3.59754 20.4119 1.54257Z" fill="#d1d5db"/>
+                                    <div className="text-center py-12 px-6">
+                                        <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="#3b82f6" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <circle cx="7" cy="7" r="1.5" fill="#3b82f6"/>
                                             </svg>
                                         </div>
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">タグを選択してください</h3>
-                                        <p className="text-gray-600 mb-6">マップでタグを選択すると、関連記事の集約レポートが表示されます</p>
+                                        <h3 className="text-xl font-medium text-gray-900 mb-4">レポート作成にはタグ選択が必要です</h3>
+                                        <div className="space-y-3 text-gray-600 mb-8 max-w-md mx-auto">
+                                            <p>• マップ画面でタグノード（○）をクリック</p>
+                                            <p>• または記事リスト内のタグをクリック</p>
+                                            <p>• 選択したタグに関連する記事の集約レポートが作成されます</p>
+                                        </div>
                                         <button
                                             onClick={() => {
                                                 setShowFavorites(false);
                                                 setCurrentView('map');
                                             }}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
                                         >
                                             マップに戻る
                                         </button>
