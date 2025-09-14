@@ -2625,10 +2625,15 @@
                                     onClick={() => {
                                         try {
                                             console.log('お気に入りボタンクリック、現在のビュー:', currentView);
+                                            console.log('showFavorites:', showFavorites);
                                             console.log('お気に入りレポート数:', favoriteReports.length);
-                                            if (currentView === 'favorites') {
+
+                                            // レポート詳細が開いている場合やお気に入り集約画面の場合はマップに戻る
+                                            if (showFavorites || currentView === 'favorites') {
+                                                setShowFavorites(false);
                                                 setCurrentView('map');
                                             } else {
+                                                // マップからの場合はお気に入りリストを表示
                                                 setCurrentView('favorites');
                                             }
                                         } catch (error) {
