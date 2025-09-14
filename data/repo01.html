@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ライフスタイルレポート：天気、交通、健康</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #ecf0f1;
+            --background-color: #ffffff;
+            --text-color: #34495e;
+            --header-text-color: #ffffff;
+            --inactive-tab-color: #95a5a6;
+            --border-radius: 12px;
+            --font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            overscroll-behavior-x: none; /* Prevents pull-to-refresh on swipe */
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: var(--background-color);
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), #8e44ad);
+            color: var(--header-text-color);
+            padding: 25px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+            background-color: var(--background-color);
+            border-bottom: 1px solid var(--secondary-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .nav-tab {
+            flex-grow: 1;
+            text-align: center;
+            padding: 10px 5px;
+            cursor: pointer;
+            color: var(--inactive-tab-color);
+            font-weight: 600;
+            font-size: 0.9rem;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-tab.active {
+            color: var(--primary-color);
+        }
+
+        .nav-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .nav-tab.active::after {
+            width: 50%;
+        }
+
+        main {
+            flex-grow: 1;
+            overflow-x: hidden; /* This is crucial for the sliding effect */
+            width: 100%;
+        }
+
+        .content-wrapper {
+            display: flex;
+            width: 400%; /* 4 tabs = 400% width */
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .content-page {
+            width: 25%; /* Each page takes up 1/4 of the wrapper */
+            flex-shrink: 0;
+            padding: 20px; /* Added padding to prevent content from touching the edges */
+        }
+
+        .card {
+            background-color: var(--background-color);
+            border: 1px solid var(--secondary-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        
+        .card-content {
+            padding: 15px;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            color: var(--inactive-tab-color);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>ライフスタイルレポート：天気、交通、健康</h1>
+        </header>
+
+        <nav>
+            <div class="nav-tab active" data-index="0">天気予報</div>
+            <div class="nav-tab" data-index="1">交通情報</div>
+            <div class="nav-tab" data-index="2">健康管理</div>
+            <div class="nav-tab" data-index="3">今日のTIPS</div>
+        </nav>
+
+        <main>
+            <div class="content-wrapper">
+                <section class="content-page" id="content-0">
+                    <div class="card">
+                        <img src="https://s.yimg.jp/images/ksk/tool/img/photo01.png" alt="天気" class="card-image">
+                        <div class="card-content">
+                            <h2>今日の天気</h2>
+                            <p>全国的に晴れ模様でしょう。最高気温は25度前後で過ごしやすい一日となりそうです。ただし、朝晩は少し冷え込むので羽織るものがあると安心です。</p>
+                        </div>
+                    </div>
+                    <div class="card"><div class="card-content"><h2>週間天気</h2><p>週の前半は晴れの日が続きますが、木曜日あたりから雲が広がりやすくなる見込みです。週末は雨の可能性もあるため、最新の情報をご確認ください。</p></div></div>
+                </section>
+
+                <section class="content-page" id="content-1">
+                    <div class="card">
+                        <img src="https://s.yimg.jp/images/ksk/tool/img/photo01.png" alt="交通" class="card-image">
+                        <div class="card-content">
+                            <h2>主要な運行情報</h2>
+                            <p>現在、主要な鉄道や航空便に大きな遅れや運休の情報はありません。平常通り運行しています。お出かけ前に各交通機関の公式サイトをご確認ください。</p>
+                        </div>
+                    </div>
+                    <div class="card"><div class="card-content"><h2>道路交通状況</h2><p>都心部へ向かう高速道路の一部で渋滞が発生しています。特に朝の通勤ラッシュ時間帯は混雑が予想されますので、時間に余裕をもってお出かけください。</p></div></div>
+                </section>
+
+                <section class="content-page" id="content-2">
+                    <div class="card">
+                        <img src="https://s.yimg.jp/images/ksk/tool/img/photo01.png" alt="健康" class="card-image">
+                        <div class="card-content">
+                            <h2>季節の変わり目の注意点</h2>
+                            <p>季節の変わり目は自律神経が乱れやすく、体調を崩しやすい時期です。十分な睡眠とバランスの取れた食事を心がけ、リラックスする時間を作りましょう。</p>
+                        </div>
+                    </div>
+                    <div class="card"><div class="card-content"><h2>簡単ヘルシーレシピ</h2><p>鶏むね肉と彩り野菜の蒸し料理はいかがでしょうか。電子レンジで簡単に調理でき、栄養バランスも抜群です。ビタミンをしっかり摂って、元気に過ごしましょう。</p></div></div>
+                </section>
+
+                <section class="content-page" id="content-3">
+                    <div class="card">
+                        <img src="https://s.yimg.jp/images/ksk/tool/img/photo01.png" alt="Tips" class="card-image">
+                        <div class="card-content">
+                            <h2>おすすめランチスポット</h2>
+                            <p>駅前の新しいカフェでは、オーガニック野菜をふんだんに使ったランチプレートが人気です。テラス席もあり、心地よい風を感じながら食事ができます。</p>
+                        </div>
+                    </div>
+                     <div class="card"><div class="card-content"><h2>5分でできるリフレッシュ方法</h2><p>仕事や勉強の合間に、窓を開けて深呼吸をしてみましょう。新しい空気を取り込むことで、気分が切り替わり、集中力もアップします。</p></div></div>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Keyword Report Generator. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('.nav-tab');
+            const contentWrapper = document.querySelector('.content-wrapper');
+            const mainContent = document.querySelector('main');
+            const numTabs = tabs.length;
+            let currentIndex = 0;
+
+            const setActiveTab = (index) => {
+                // Ensure index is within bounds
+                if (index < 0 || index >= numTabs) return;
+
+                tabs.forEach(tab => tab.classList.remove('active'));
+                tabs[index].classList.add('active');
+                
+                contentWrapper.style.transform = `translateX(-${index * (100 / numTabs)}%)`;
+                currentIndex = index;
+            };
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const index = parseInt(tab.dataset.index, 10);
+                    setActiveTab(index);
+                });
+            });
+
+            // Swipe functionality
+            let touchstartX = 0;
+            let touchendX = 0;
+
+            mainContent.addEventListener('touchstart', (event) => {
+                touchstartX = event.changedTouches[0].screenX;
+            }, { passive: true });
+            
+            mainContent.addEventListener('touchend', (event) => {
+                touchendX = event.changedTouches[0].screenX;
+                handleSwipeGesture();
+            });
+
+            const handleSwipeGesture = () => {
+                const swipeThreshold = 50; // Minimum swipe distance
+                if (touchendX < touchstartX - swipeThreshold) {
+                    // Swiped left
+                    setActiveTab(currentIndex + 1);
+                } else if (touchendX > touchstartX + swipeThreshold) {
+                    // Swiped right
+                    setActiveTab(currentIndex - 1);
+                }
+            };
+        });
+    </script>
+</body>
+</html>

@@ -3,12 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LifeSyncMap - 興味マッピングアプリ</title>
+    <title>testApp - 興味マッピングアプリ</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'normal': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        'handwriting': ['Zen Kurenaido', 'cursive'],
+                        'klee': ['Klee One', 'cursive'],
+                        'yusei': ['Yusei Magic', 'cursive'],
+                        'hachi': ['Hachi Maru Pop', 'cursive'],
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Klee+One:wght@400;600&family=Yusei+Magic&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body class="bg-gray-50">
@@ -267,13 +285,86 @@
             const [showVoiceMenu, setShowVoiceMenu] = useState(false);
             const [viewMode, setViewMode] = useState('grid');
             const [mapViewMode, setMapViewMode] = useState('list');
+            const [favoritesViewMode, setFavoritesViewMode] = useState('grid'); // お気に入り集約画面専用
             const [selectedArticle, setSelectedArticle] = useState(null);
             const [showArticleDetail, setShowArticleDetail] = useState(false);
             const [showFavorites, setShowFavorites] = useState(false);
             const [showAiHelp, setShowAiHelp] = useState(false);
+            const [previousView, setPreviousView] = useState(null); // 前の画面を追跡
             const [interestDepth, setInterestDepth] = useState(50); // 興味の深さ（0-100）
-            const [favoriteReports, setFavoriteReports] = useState([]); // お気に入りレポートリスト
+            //const [favoriteReports, setFavoriteReports] = useState([]); // お気に入りレポートリスト
+            const [favoriteReports, setFavoriteReports] = useState(() => {
+                // ローカルストレージからお気に入りを読み込み
+                try {
+                    const saved = localStorage.getItem('favoriteReports');
+                    return saved ? JSON.parse(saved) : [];
+                } catch (error) {
+                    console.error('お気に入り読み込みエラー:', error);
+                    return [];
+                }
+            }); // お気に入りレポートリスト
             const [showFavoritesList, setShowFavoritesList] = useState(false); // お気に入りリスト表示状態
+            const [longPressedArticle, setLongPressedArticle] = useState(null); // 長押し状態の記事
+            const [selectedFont, setSelectedFont] = useState(() => {
+                // ローカルストレージからフォント設定を読み込み
+                try {
+                    const saved = localStorage.getItem('selectedFont');
+                    return saved || 'normal';
+                } catch (error) {
+                    return 'normal';
+                }
+            }); // 選択されたフォント
+            const [showFontSelector, setShowFontSelector] = useState(false); // フォント選択パネル表示状態
+
+            // フォント選択肢
+            const fontOptions = [
+                { id: 'normal', name: '標準フォント', sample: 'あいうえお ABC' },
+                { id: 'handwriting', name: 'Zen Kurenaido', sample: 'あいうえお ABC' },
+                { id: 'klee', name: 'Klee One', sample: 'あいうえお ABC' },
+                { id: 'yusei', name: 'Yusei Magic', sample: 'あいうえお ABC' },
+                { id: 'hachi', name: 'Hachi Maru Pop', sample: 'あいうえお ABC' }
+            ];
+
+            // フォント変更機能
+            const changeFont = (fontId) => {
+                setSelectedFont(fontId);
+                localStorage.setItem('selectedFont', fontId);
+                setShowFontSelector(false);
+            };
+
+            // 長押し機能
+            const handleLongPressStart = (reportId) => {
+                const timer = setTimeout(() => {
+                    setLongPressedArticle(reportId);
+                }, 500); // 500ms長押しで削除ボタン表示
+                return timer;
+            };
+
+            const handleLongPressEnd = (timer) => {
+                clearTimeout(timer);
+            };
+
+            // お気に入り記事削除
+            const deleteArticleFromFavorites = (reportId, event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                setFavoriteReports(prev => {
+                    const updatedReports = prev.filter(report => report.id !== reportId);
+                    try {
+                        localStorage.setItem('favoriteReports', JSON.stringify(updatedReports));
+                        console.log('🗑️ お気に入り記事削除完了:', reportId);
+                    } catch (error) {
+                        console.error('お気に入り削除保存エラー:', error);
+                    }
+                    return updatedReports;
+                });
+
+                // 長押し状態をリセット
+                setLongPressedArticle(null);
+            };
 
             // 初期タグの設定
             const initializeDefaultTags = () => {
@@ -366,6 +457,8 @@
 
             // お気に入りレポート管理（トグル機能付き）
             const toggleFavorites = (reportData, event) => {
+                console.log('🔖 toggleFavorites呼び出し:', reportData);
+                console.log('📍 呼び出し元のスタックトレース:', new Error().stack);
                 const newReport = {
                     title: reportData.title,
                     type: reportData.type,
@@ -373,30 +466,55 @@
                     timestamp: new Date().toISOString(),
                     articleCount: reportData.articleCount
                 };
+
+                // 記事データがある場合のみ追加
+                if (reportData.articleData) {
+                    newReport.articleData = reportData.articleData;
+                }
                 
                 setFavoriteReports(prev => {
-                    // 既存チェック
-                    const existingIndex = prev.findIndex(report => 
-                        report.type === newReport.type && 
-                        JSON.stringify(report.tags.sort()) === JSON.stringify(newReport.tags.sort())
-                    );
-                    
+                    // 既存チェック（記事の場合はタイトルで、レポートの場合はタグで判定）
+                    const existingIndex = prev.findIndex(report => {
+                        if (report.type === 'article' && newReport.type === 'article') {
+                            // 記事の場合はタイトルで重複チェック
+                            return report.title === newReport.title;
+                        } else if (report.type === 'aggregated' && newReport.type === 'aggregated') {
+                            // 集約レポートの場合はタグで重複チェック
+                            return JSON.stringify(report.tags.sort()) === JSON.stringify(newReport.tags.sort());
+                        }
+                        return false;
+                    });
+
+                    let updatedReports;
                     if (existingIndex !== -1) {
                         // 既存の場合は削除（解除）
                         if (event) {
                             showCompletionAnimation(event.target, 'delete');
                         }
-                        return prev.filter((_, index) => index !== existingIndex);
+                        updatedReports = prev.filter((_, index) => index !== existingIndex);
                     } else {
                         // 新規の場合は追加
                         const reportId = `${reportData.type}_${reportData.tags.join('_')}_${Date.now()}`;
                         const reportWithId = { ...newReport, id: reportId };
-                        
+
                         if (event) {
                             showCompletionAnimation(event.target, 'success');
                         }
-                        return [...prev, reportWithId];
+                        updatedReports = [...prev, reportWithId];
                     }
+
+                    // ローカルストレージに保存
+                    try {
+                        localStorage.setItem('favoriteReports', JSON.stringify(updatedReports));
+                        console.log('💾 お気に入り保存完了:', updatedReports);
+                        console.log('📊 現在のお気に入り数:', updatedReports.length);
+                        console.log('📝 記事タイプの数:', updatedReports.filter(r => r.type === 'article').length);
+                        console.log('📋 集約タイプの数:', updatedReports.filter(r => r.type === 'aggregated').length);
+                    } catch (error) {
+                        console.error('お気に入り保存エラー:', error);
+                    }
+
+                    return updatedReports;
                 });
             };
             
@@ -405,15 +523,32 @@
             
             // お気に入り状態チェック
             const isFavorite = (reportData) => {
-                return favoriteReports.some(report => 
-                    report.type === reportData.type && 
-                    JSON.stringify(report.tags.sort()) === JSON.stringify(reportData.tags.sort())
-                );
+                return favoriteReports.some(report => {
+                    if (report.type === 'article' && reportData.type === 'article') {
+                        // 記事の場合はタイトルで判定
+                        return report.title === reportData.title;
+                    } else if (report.type === 'aggregated' && reportData.type === 'aggregated') {
+                        // 集約レポートの場合はタグで判定
+                        return JSON.stringify(report.tags.sort()) === JSON.stringify(reportData.tags.sort());
+                    }
+                    return false;
+                });
             };
 
             const removeFromFavorites = (reportId, event) => {
-                setFavoriteReports(prev => prev.filter(report => report.id !== reportId));
-                
+                setFavoriteReports(prev => {
+                    const updatedReports = prev.filter(report => report.id !== reportId);
+
+                    // ローカルストレージに保存
+                    try {
+                        localStorage.setItem('favoriteReports', JSON.stringify(updatedReports));
+                    } catch (error) {
+                        console.error('お気に入り削除保存エラー:', error);
+                    }
+
+                    return updatedReports;
+                });
+
                 // 削除時の完了アニメーション
                 if (event) {
                     showCompletionAnimation(event.target, 'delete');
@@ -529,9 +664,21 @@
             }, []);
 
             const handleArticleRead = (article, event) => {
+                console.log('handleArticleRead実行:', { article, showFavorites, currentView });
+                // 現在の画面状態を保存
+                if (showFavorites) {
+                    setPreviousView('favorites');
+                } else if (currentView === 'favorites') {
+                    setPreviousView('favoritesList');
+                } else {
+                    setPreviousView('main');
+                }
+
                 // 記事詳細表示
+                console.log('記事詳細表示設定中...');
                 setSelectedArticle(article);
                 setShowArticleDetail(true);
+                console.log('記事詳細表示設定完了');
 
                 // パーティクルアニメーション開始
                 const rect = event.target.getBoundingClientRect();
@@ -1074,18 +1221,585 @@
                 );
             }
 
+            // 現在のビューに応じてコンポーネントを表示
+            if (currentView === 'favorites') {
+                return (
+                    <div className="min-h-screen bg-gray-50">
+                        <ParticleSystem />
+
+                        {/* 記事詳細モーダル */}
+                        {showArticleDetail && selectedArticle && (
+                            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                                <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+                                    {/* 固定ヘッダー（閉じるボタンのみ） */}
+                                    <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-end">
+                                        <button
+                                            onClick={() => {
+                                                setShowArticleDetail(false);
+                                                // 前の画面に戻る
+                                                if (previousView === 'favorites') {
+                                                    setShowFavorites(true);
+                                                } else if (previousView === 'favoritesList') {
+                                                    // お気に入りリスト画面にはそのまま残る
+                                                } else {
+                                                    setCurrentView('map');
+                                                }
+                                            }}
+                                            className="w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full flex items-center justify-center text-white transition-all"
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    {/* スクロール可能なコンテンツ */}
+                                    <div className="overflow-y-auto max-h-[90vh]">
+                                        {/* 記事画像 */}
+                                        <div className="relative">
+                                            <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 relative overflow-hidden">
+                                                <img
+                                                    src="https://s.yimg.jp/images/ksk/tool/img/photo01.png"
+                                                    alt={selectedArticle.title}
+                                                    className="w-full h-full object-cover opacity-80"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+
+                                                {/* 話題度バッジ */}
+                                                <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-white text-sm font-medium ${
+                                                    (selectedArticle.topicalityScore || 50) >= 80 ? 'bg-red-500' :
+                                                    (selectedArticle.topicalityScore || 50) >= 60 ? 'bg-orange-500' :
+                                                    (selectedArticle.topicalityScore || 50) >= 40 ? 'bg-yellow-500' : 'bg-gray-500'
+                                                }`}>
+                                                    話題度 {Math.round(selectedArticle.topicalityScore || 50)}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* コンテンツ */}
+                                        <div className="p-6">
+                                            {/* タイトル */}
+                                            <h1 className={`text-2xl font-bold font-${selectedFont} text-gray-900 mb-4 leading-tight`}>
+                                                {selectedArticle.title}
+                                            </h1>
+
+                                            {/* メタ情報 */}
+                                            <div className="flex items-center gap-4 mb-6 text-sm text-gray-500">
+                                                <span className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6zm1-10H7v5l4 2.4.8-1.2-3.8-2.2V4z" fill="currentColor"/>
+                                                    </svg>
+                                                    {new Date().toLocaleDateString('ja-JP')}
+                                                </span>
+                                                <span className="flex items-center gap-2">
+                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M2 4.5C2 3.67157 2.67157 3 3.5 3H12.5C13.3284 3 14 3.67157 14 4.5V11.5C14 12.3284 13.3284 13 12.5 13H3.5C2.67157 13 2 12.3284 2 11.5V4.5ZM3.5 4C3.22386 4 3 4.22386 3 4.5V5.5L8 8.5L13 5.5V4.5C13 4.22386 12.7761 4 12.5 4H3.5ZM13 6.5L8 9.5L3 6.5V11.5C3 11.7761 3.22386 12 3.5 12H12.5C12.7761 12 13 11.7761 13 11.5V6.5Z" fill="currentColor"/>
+                                                    </svg>
+                                                    {selectedArticle.source}
+                                                </span>
+                                            </div>
+
+                                            {/* 記事本文 */}
+                                            <div className="prose max-w-none mb-6">
+                                                <p className={`text-gray-700 leading-relaxed text-base mb-4 font-${selectedFont}`}>
+                                                    {selectedArticle.snippet}
+                                                </p>
+
+                                                {/* 詳細内容（サンプル） */}
+                                                <p className={`text-gray-700 leading-relaxed text-base mb-4 font-${selectedFont}`}>
+                                                    この記事では、{selectedArticle.title}について詳しく解説します。最新の動向や技術的な詳細、今後の展望についても触れながら、読者の皆様にとって有益な情報をお届けします。
+                                                </p>
+
+                                                <p className={`text-gray-700 leading-relaxed text-base mb-4 font-${selectedFont}`}>
+                                                    {(selectedArticle.tags || []).includes('AI') && 'AI技術の進歩により、私たちの生活は大きく変化しています。'}
+                                                    {(selectedArticle.tags || []).includes('技術') && 'この技術革新は、産業界全体に影響を与えています。'}
+                                                    {(selectedArticle.tags || []).includes('ビジネス') && 'ビジネスの世界では、新しいビジネスモデルが次々と生まれています。'}
+                                                    {(selectedArticle.tags || []).includes('料理') && '食文化の多様性と伝統の継承について考える機会となります。'}
+                                                    今後の動向にも注目していく必要があります。
+                                                </p>
+                                            </div>
+
+                                            {/* タグ */}
+                                            <div className="mb-6">
+                                                <h3 className={`text-base font-${selectedFont} text-gray-600 mb-3`}>関連タグ</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(selectedArticle.tags || []).map((tag, index) => (
+                                                        <span
+                                                            key={index}
+                                                            className="px-3 py-1.5 bg-blue-100 text-blue-700 text-sm rounded-full font-medium hover:bg-blue-200 transition-colors cursor-pointer"
+                                                            onClick={() => {
+                                                                handleTagClick(tag);
+                                                                setShowArticleDetail(false);
+                                                                setCurrentView('map');
+                                                            }}
+                                                        >
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* アクションボタン */}
+                                            <div className="flex justify-center pt-4 border-t">
+                                                <button
+                                                    onClick={() => setShowArticleDetail(false)}
+                                                    className="px-6 py-3 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition-colors"
+                                                >
+                                                    閉じる
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ヘッダー */}
+                        <header className="bg-white shadow-sm border-b relative">
+                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                                <div className="flex items-center justify-center h-16 relative">
+                                    <h1 className={`text-xl font-${selectedFont} text-gray-900`}>お気に入り集約</h1>
+                                    <div className="absolute right-0 flex items-center gap-2">
+                                        {/* フォント設定ボタン */}
+                                        <button
+                                            onClick={() => setShowFontSelector(!showFontSelector)}
+                                            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition-colors"
+                                            title="フォント設定"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M12 3C13.1 3 14 3.9 14 5C14 6.1 13.1 7 12 7C10.9 7 10 6.1 10 5C10 3.9 10.9 3 12 3ZM21 9V7L15 1H5C3.9 1 3 1.9 3 3V19C3 20.1 3.9 21 5 21H11V19H5V3H13V9H21ZM21 21L14.5 14.5C13.9 14.8 13.2 15 12.5 15C10.6 15 9 13.4 9 11.5S10.6 8 12.5 8 16 9.6 16 11.5C16 12.2 15.8 12.9 15.5 13.5L22 20L21 21Z" fill="currentColor"/>
+                                            </svg>
+                                        </button>
+                                        {/* AIヘルプボタン */}
+                                        <button
+                                            onClick={() => setShowAiHelp(!showAiHelp)}
+                                            className={`w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-sm font-${selectedFont} text-gray-600 transition-colors`}
+                                            title="AI要約について"
+                                        >
+                                            i
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* AIヘルプポップアップ */}
+                                {showAiHelp && (
+                                    <div className="absolute top-full right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-80 z-30">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h4 className="font-handwriting text-gray-900">AI要約機能について</h4>
+                                            <button
+                                                onClick={() => setShowAiHelp(false)}
+                                                className="text-gray-400 hover:text-gray-600 ml-2"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className={`text-sm text-gray-600 font-${selectedFont} space-y-2`}>
+                                            <p>各レポートには要約機能があります：</p>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                <li>レポートを開くと、関連記事の要約が自動生成されます</li>
+                                                <li>複数の記事から主要なポイントを抽出します</li>
+                                                <li>効率的に情報を把握できます</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* フォント選択パネル */}
+                                {showFontSelector && (
+                                    <div className="absolute top-full right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-80 z-30">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h4 className={`font-${selectedFont} text-gray-900`}>フォント選択</h4>
+                                            <button
+                                                onClick={() => setShowFontSelector(false)}
+                                                className="text-gray-400 hover:text-gray-600"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {fontOptions.map(font => (
+                                                <button
+                                                    key={font.id}
+                                                    onClick={() => changeFont(font.id)}
+                                                    className={`w-full p-3 text-left rounded-lg border transition-colors ${
+                                                        selectedFont === font.id
+                                                            ? 'border-blue-500 bg-blue-50'
+                                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <div className={`font-${font.id} text-gray-900 mb-1`}>
+                                                        {font.name}
+                                                    </div>
+                                                    <div className={`font-${font.id} text-sm text-gray-600`}>
+                                                        {font.sample}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </header>
+
+                        {/* コンテンツ */}
+                        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                            {/* 集約レポート セクション */}
+                            <div className="mb-8">
+                                <h2 className={`text-xl font-${selectedFont} text-gray-900 mb-6`}>レポート</h2>
+                                {console.log('📋 お気に入り表示チェック:', favoriteReports)}
+                                {favoriteReports.filter(report => report.type === 'aggregated').length === 0 ? (
+                                <div className="text-center py-12">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-4 text-gray-300">
+                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                                    </svg>
+                                    <h3 className={`text-lg font-${selectedFont} text-gray-900 mb-2`}>お気に入りレポートがありません</h3>
+                                    <p className={`text-gray-500 font-${selectedFont}`}>レポートのピンアイコンをクリックして追加できます</p>
+                                </div>
+                            ) : (
+                                    <div className="space-y-3">
+                                    {favoriteReports.filter(report => report.type === 'aggregated').map((report, index) => (
+                                        <div
+                                            key={report.id || index}
+                                            className="bg-white rounded-xl border border-gray-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
+                                            onClick={() => {
+                                                // レポートを再現してメインページに戻る
+                                                setSelectedTags(report.tags || []);
+                                                setPreviousView('favoritesList'); // お気に入りリストから来たことを記録
+                                                setShowFavorites(true);
+                                                setCurrentView('map');
+                                            }}
+                                        >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center flex-1">
+                                                        <span className={`text-sm font-${selectedFont} text-gray-900`}>
+                                                            {(report.tags || []).join(' × ') || '無題のレポート'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2 ml-4">
+                                                        {/* 時計アイコン */}
+                                                        <button
+                                                            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                                            title="タイマー"
+                                                        >
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <circle cx="12" cy="12" r="10"/>
+                                                                <polyline points="12,6 12,12 16,14"/>
+                                                            </svg>
+                                                        </button>
+                                                        {/* ゴミ箱アイコン */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                removeFromFavorites(report.id, e);
+                                                            }}
+                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                            title="削除"
+                                                        >
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            </div>
+
+                            {/* 記事セクション */}
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className={`text-xl font-${selectedFont} text-gray-900`}>お気に入り記事</h2>
+                                    <div className="flex bg-gray-100 rounded-lg p-1 shadow-sm">
+                                        <button
+                                            onClick={() => setFavoritesViewMode('grid')}
+                                            className={`p-1.5 rounded transition-all ${
+                                                favoritesViewMode === 'grid'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <rect x="1" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+                                                <rect x="8" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+                                                <rect x="1" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+                                                <rect x="8" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+                                            </svg>
+                                        </button>
+                                        <button
+                                            onClick={() => setFavoritesViewMode('list')}
+                                            className={`p-1.5 rounded transition-all ${
+                                                favoritesViewMode === 'list'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700'
+                                            }`}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <rect x="1" y="2" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+                                                <rect x="1" y="6" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+                                                <rect x="1" y="10" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* 記事表示 */}
+                                <div onClick={() => setLongPressedArticle(null)}>
+                                {(() => {
+                                    const favoriteArticles = favoriteReports.filter(report => report.type === 'article');
+                                    console.log('お気に入り記事一覧:', favoriteArticles);
+
+                                    if (favoritesViewMode === 'grid') {
+                                        return (
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {favoriteArticles.length === 0 ? (
+                                                    <div className="col-span-3 text-center py-8 text-gray-500">
+                                                        更新がありません
+                                                    </div>
+                                                ) : (
+                                                    favoriteArticles.map((report, index) => (
+                                                        <div
+                                                            key={report.id || index}
+                                                            className="aspect-square bg-white border border-gray-200 rounded cursor-pointer hover:shadow-md transition-shadow overflow-hidden relative"
+                                                            onClick={(e) => {
+                                                                // 長押し状態の時はクリックを無効にする
+                                                                if (longPressedArticle === report.id) {
+                                                                    return;
+                                                                }
+                                                                console.log('お気に入り記事クリック:', report);
+                                                                const article = report.articleData || {
+                                                                    title: report.title?.replace('記事: ', '') || '無題の記事',
+                                                                    tags: report.tags || [],
+                                                                    snippet: '記事の詳細',
+                                                                    source: 'お気に入り'
+                                                                };
+                                                                console.log('記事データ:', article);
+                                                                try {
+                                                                    handleArticleRead(article, e);
+                                                                } catch (error) {
+                                                                    console.error('記事詳細表示エラー:', error);
+                                                                }
+                                                            }}
+                                                            onTouchStart={(e) => {
+                                                                const timer = handleLongPressStart(report.id);
+                                                                e.target._longPressTimer = timer;
+                                                            }}
+                                                            onTouchEnd={(e) => {
+                                                                if (e.target._longPressTimer) {
+                                                                    handleLongPressEnd(e.target._longPressTimer);
+                                                                }
+                                                            }}
+                                                            onMouseDown={(e) => {
+                                                                const timer = handleLongPressStart(report.id);
+                                                                e.target._longPressTimer = timer;
+                                                            }}
+                                                            onMouseUp={(e) => {
+                                                                if (e.target._longPressTimer) {
+                                                                    handleLongPressEnd(e.target._longPressTimer);
+                                                                }
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                if (e.target._longPressTimer) {
+                                                                    handleLongPressEnd(e.target._longPressTimer);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="h-full flex flex-col p-2">
+                                                                <div className="flex-1 flex items-center justify-center bg-gray-100 rounded mb-2">
+                                                                    <img
+                                                                        src="https://s.yimg.jp/images/ksk/tool/img/photo01.png"
+                                                                        alt={report.articleData?.title || 'Article'}
+                                                                        className="w-full h-full object-cover rounded"
+                                                                    />
+                                                                </div>
+                                                                <div className={`text-xs text-gray-900 font-bold font-${selectedFont} line-clamp-2`}>
+                                                                    {report.articleData?.title || report.title?.replace('記事: ', '')}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* 長押し時の削除ボタン */}
+                                                            {longPressedArticle === report.id && (
+                                                                <div className="absolute inset-0 bg-black bg-opacity-40">
+                                                                    <button
+                                                                        onClick={(e) => deleteArticleFromFavorites(report.id, e)}
+                                                                        className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-gray-600 shadow-lg hover:bg-gray-100 transition-colors"
+                                                                        title="削除"
+                                                                    >
+                                                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                            <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        );
+                                    } else {
+                                        // リストビュー
+                                        return (
+                                            <div className="space-y-3">
+                                                {favoriteArticles.length === 0 ? (
+                                                    <div className="text-center py-8 text-gray-500">
+                                                        更新がありません
+                                                    </div>
+                                                ) : (
+                                                    favoriteArticles.map((report, index) => (
+                                                        <div
+                                                            key={report.id || index}
+                                                            className="bg-white rounded-lg p-3 shadow-sm border hover:shadow-md transition-all cursor-pointer relative"
+                                                            onClick={(e) => {
+                                                                console.log('お気に入り記事クリック:', report);
+                                                                const article = report.articleData || {
+                                                                    title: report.title?.replace('記事: ', '') || '無題の記事',
+                                                                    tags: report.tags || [],
+                                                                    snippet: '記事の詳細',
+                                                                    source: 'お気に入り'
+                                                                };
+                                                                console.log('記事データ:', article);
+                                                                try {
+                                                                    handleArticleRead(article, e);
+                                                                } catch (error) {
+                                                                    console.error('記事詳細表示エラー:', error);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className="flex gap-3">
+                                                                <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                                                    <img
+                                                                        src="https://s.yimg.jp/images/ksk/tool/img/photo01.png"
+                                                                        alt={report.articleData?.title || 'Article'}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <h4 className={`text-sm font-bold font-${selectedFont} text-gray-900 line-clamp-2 mb-1`}>
+                                                                        {report.articleData?.title || report.title?.replace('記事: ', '')}
+                                                                    </h4>
+                                                                    <p className={`text-xs text-gray-600 font-${selectedFont} line-clamp-2 mb-2`}>
+                                                                        {report.articleData?.snippet || '記事の詳細'}
+                                                                    </p>
+                                                                    <div className="flex items-center justify-between text-xs text-gray-400">
+                                                                        <span>{report.articleData?.source || 'ソース不明'}</span>
+                                                                        <span>お気に入り</span>
+                                                                    </div>
+                                                                </div>
+
+                                                            {/* リスト表示の削除ボタン（右上） */}
+                                                            <button
+                                                                onClick={(e) => deleteArticleFromFavorites(report.id, e)}
+                                                                className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 shadow-sm transition-colors border"
+                                                                title="削除"
+                                                            >
+                                                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M9 3L3 9M3 3l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                                </svg>
+                                                            </button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                })()}
+                                </div>
+                            </div>
+                        </main>
+
+                        {/* 下部ナビゲーション */}
+                        <nav className="fixed bottom-0 left-0 right-0 bg-white/20 backdrop-blur-sm border-t border-gray-200/30 shadow-lg z-50">
+                            <div className="flex items-center justify-between px-4 py-2">
+                                {/* 左寄せ: ホームボタン */}
+                                <button
+                                    onClick={() => setCurrentView('map')}
+                                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path fillRule="evenodd" clipRule="evenodd" d="M17.3892 7.44191L10.4827 0.60791C9.66124 -0.20459 8.33874 -0.20459 7.51724 0.60791L0.614244 7.43891C0.221244 7.82741 0.000244141 8.35791 0.000244141 8.91091V16.9999C0.000244141 17.5524 0.447744 17.9999 1.00024 17.9999H7.00024V12.2499C7.00024 12.1119 7.11174 11.9999 7.25024 11.9999H10.7502C10.8882 11.9999 11.0002 12.1119 11.0002 12.2499V17.9999H17.0002C17.5522 17.9999 18.0002 17.5524 18.0002 16.9999V8.90591C18.0002 8.35591 17.7797 7.82891 17.3892 7.44191" fill="black" fillOpacity="0.73"/>
+                                    </svg>
+                                </button>
+
+                                {/* 右寄せ: カメラ・音声・マップボタンコンテナ */}
+                                <div className="flex items-center bg-gray-100 rounded-full px-1">
+                                    {/* カメラボタン */}
+                                    <button
+                                        onClick={() => setShowCameraMenu(!showCameraMenu)}
+                                        className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all mx-0.5"
+                                    >
+                                        <svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path fillRule="evenodd" clipRule="evenodd" d="M15.5 6C14.948 6 14.5 5.5525 14.5 4.999C14.5 4.4475 14.948 4 15.5 4C16.052 4 16.5 4.4475 16.5 4.999C16.5 5.5525 16.052 6 15.5 6M9 13.5C6.515 13.5 4.5 11.483 4.5 9C4.5 6.5165 6.515 4.5 9 4.5C11.483 4.5 13.5 6.5165 13.5 9C13.5 11.483 11.483 13.5 9 13.5M16 2H13.5L11.793 0.293C11.6055 0.1055 11.351 0 11.0855 0H6.9145C6.649 0 6.3945 0.1055 6.207 0.293L4.5 2H2C0.9 2 0 2.9 0 4V14C0 15.1 0.9 16 2 16H16C17.1 16 18 15.1 18 14V4C18 2.9 17.1 2 16 2M9 6.30005C7.511 6.30005 6.3 7.51105 6.3 9.00005C6.3 10.4886 7.511 11.7001 9 11.7001C10.489 11.7001 11.7 10.4886 11.7 9.00005C11.7 7.51105 10.489 6.30005 9 6.30005" fill="black" fillOpacity="0.73"/>
+                                        </svg>
+                                    </button>
+
+                                    {/* 音声ボタン */}
+                                    <button
+                                        onClick={() => setShowVoiceMenu(!showVoiceMenu)}
+                                        className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all mx-0.5"
+                                    >
+                                        <svg width="12" height="20" viewBox="0 0 12 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M1.5 9.5V10.5C1.5 12.9815 3.519 15 6 15C8.481 15 10.5 12.9815 10.5 10.5V9.5H12V10.5C12 13.4675 9.83297 15.9312 7 16.4092V18H8.75C9.1645 18 9.5 18.3355 9.5 18.75C9.5 19.1645 9.1645 19.5 8.75 19.5H3.25C2.8355 19.5 2.5 19.1645 2.5 18.75C2.5 18.3355 2.8355 18 3.25 18H5V16.4092C2.16703 15.9312 0 13.4675 0 10.5V9.5H1.5ZM6 0.5C7.6565 0.5 9 1.8435 9 3.5V10.5C9 12.1565 7.6565 13.5 6 13.5C4.3435 13.5 3 12.1565 3 10.5V3.5C3 1.8435 4.3435 0.5 6 0.5Z" fill="black" fillOpacity="0.73"/>
+                                        </svg>
+                                    </button>
+
+                                    {/* お気に入りリストボタン（アクティブ状態） */}
+                                    <button
+                                        onClick={() => {
+                                            try {
+                                                console.log('お気に入りページでボタンクリック、メインページに戻る');
+                                                setCurrentView('map');
+                                            } catch (error) {
+                                                console.error('メインページ戻りエラー:', error);
+                                            }
+                                        }}
+                                        className="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center text-white transition-all mx-0.5 relative"
+                                        title="お気に入りリスト（メインページに戻る）"
+                                    >
+                                        <svg width="16" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                                        </svg>
+                                        {favoriteReports.length > 0 && (
+                                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-handwriting rounded-full w-5 h-5 flex items-center justify-center">
+                                                {favoriteReports.length}
+                                            </div>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                );
+            }
+
             return (
                 <div className="min-h-screen bg-gray-50">
                     <ParticleSystem />
                     
                     {/* 記事詳細モーダル */}
+                    {console.log('モーダル表示チェック:', { showArticleDetail, selectedArticle: !!selectedArticle, currentView })}
                     {showArticleDetail && selectedArticle && (
                         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                             <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
                                 {/* 固定ヘッダー（閉じるボタンのみ） */}
                                 <div className="absolute top-0 left-0 right-0 z-10 p-4 flex justify-end">
                                     <button
-                                        onClick={() => setShowArticleDetail(false)}
+                                        onClick={() => {
+                                            setShowArticleDetail(false);
+                                            // 前の画面に戻る
+                                            if (previousView === 'favorites') {
+                                                setShowFavorites(true);
+                                            } else if (previousView === 'favoritesList') {
+                                                setCurrentView('favorites');
+                                            }
+                                            // メイン画面の場合は何もしない（既に表示されている）
+                                            setPreviousView(null); // リセット
+                                        }}
                                         className="w-10 h-10 bg-black/20 hover:bg-black/40 rounded-full flex items-center justify-center text-white transition-all"
                                     >
                                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1120,7 +1834,7 @@
                                     {/* コンテンツ */}
                                     <div className="p-6">
                                     {/* タイトル */}
-                                    <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+                                    <h1 className={`text-2xl font-bold font-${selectedFont} text-gray-900 mb-4 leading-tight`}>
                                         {selectedArticle.title}
                                     </h1>
                                     
@@ -1142,16 +1856,16 @@
                                     
                                     {/* 記事本文 */}
                                     <div className="prose max-w-none mb-6">
-                                        <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                        <p className={`text-gray-700 font-${selectedFont} leading-relaxed text-base mb-4`}>
                                             {selectedArticle.snippet}
                                         </p>
-                                        
+
                                         {/* 詳細内容（サンプル） */}
-                                        <p className="text-gray-700 leading-relaxed text-base mb-4">
+                                        <p className={`text-gray-700 font-${selectedFont} leading-relaxed text-base mb-4`}>
                                             この記事では、{selectedArticle.title}について詳しく解説します。最新の動向や技術的な詳細、今後の展望についても触れながら、読者の皆様にとって有益な情報をお届けします。
                                         </p>
-                                        
-                                        <p className="text-gray-700 leading-relaxed text-base mb-4">
+
+                                        <p className={`text-gray-700 font-${selectedFont} leading-relaxed text-base mb-4`}>
                                             {selectedArticle.tags.includes('AI') && 'AI技術の進歩により、私たちの生活は大きく変化しています。'}
                                             {selectedArticle.tags.includes('技術') && 'この技術革新は、産業界全体に影響を与えています。'}
                                             {selectedArticle.tags.includes('ビジネス') && 'ビジネスの世界では、新しいビジネスモデルが次々と生まれています。'}
@@ -1162,7 +1876,6 @@
                                     
                                     {/* タグ */}
                                     <div className="mb-6">
-                                        <h3 className="text-sm font-semibold text-gray-600 mb-3">関連タグ</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {selectedArticle.tags.map(tag => (
                                                 <span
@@ -1181,22 +1894,7 @@
                                     </div>
                                     
                                     {/* アクションボタン */}
-                                    <div className="flex gap-3 pt-4 border-t">
-                                        <button
-                                            onClick={() => {
-                                                setShowArticleDetail(false);
-                                                setCurrentView('map');
-                                                selectedArticle.tags.forEach(tag => handleTagClick(tag));
-                                            }}
-                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M15.725 11.55V19.8H7.47496V11.55H15.725ZM15.725 9.35H7.47496C6.25946 9.35 5.27496 10.3345 5.27496 11.55V19.8C5.27496 21.0155 6.25946 22 7.47496 22H15.725C16.9405 22 17.925 21.0155 17.925 19.8V11.55C17.925 10.3345 16.9405 9.35 15.725 9.35Z" fill="white"/>
-                                                <path fillRule="evenodd" clipRule="evenodd" d="M13.8 14.85H12.425V13.475C12.425 13.0185 12.0565 12.65 11.6 12.65C11.1435 12.65 10.775 13.0185 10.775 13.475V14.85H9.40001C8.94351 14.85 8.57501 15.2185 8.57501 15.675C8.57501 16.1315 8.94351 16.5 9.40001 16.5H10.775V17.875C10.775 18.3315 11.1435 18.7 11.6 18.7C12.0565 18.7 12.425 18.3315 12.425 17.875V16.5H13.8C14.2565 16.5 14.625 16.1315 14.625 15.675C14.625 15.2185 14.2565 14.85 13.8 14.85Z" fill="white"/>
-                                                <path fillRule="evenodd" clipRule="evenodd" d="M15.725 7.7H17.925V6.0445C17.925 5.753 17.8095 5.4725 17.606 5.269L12.678 0.3245C12.469 0.1155 12.1885 0 11.897 0H2.52501C1.30951 0 0.325012 0.9845 0.325012 2.2V19.8C0.325012 21.0155 1.30951 22 2.52501 22H3.62501V19.8H2.52501V2.2H11.391V5.5C11.391 6.105 11.886 6.6 12.491 6.6H15.725V7.7Z" fill="white"/>
-                                            </svg>
-                                            マップで関連記事を見る
-                                        </button>
+                                    <div className="flex justify-center pt-4 border-t">
                                         <button
                                             onClick={() => setShowArticleDetail(false)}
                                             className="px-6 py-3 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition-colors"
@@ -1215,55 +1913,93 @@
                         <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
                             {/* ヘッダー */}
                             <div className="bg-white border-b border-gray-200 sticky top-0 z-10 relative">
-                                <div className="flex items-center justify-between p-4">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => setShowFavorites(false)}
-                                            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                            </svg>
-                                        </button>
-                                        <div className="flex items-center gap-2">
-                                            <svg width="24" height="25" viewBox="0 0 302 318" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M200.186 58.1534C199.13 58.0267 198.571 56.8128 199.194 55.9578L223.25 22.4859C227.198 17.0075 226.586 9.48138 221.815 4.71024C216.611 -0.49368 208.229 -0.694237 202.793 4.26691L148.041 54.1633C147.524 54.6383 146.722 54.6489 146.194 54.1739L105.819 18.1053C100.277 13.1547 91.8326 13.387 86.5864 18.6437C81.8153 23.4042 81.1186 30.8882 84.9292 36.451L98.641 56.4961C99.2321 57.3511 98.6832 58.5228 97.6593 58.66C33.4389 67.1995 0.420898 96.6603 0.420898 176.313C0.420898 260.536 37.3234 288.646 108.996 295.254C112.437 295.57 115.889 295.697 119.341 295.644C120.238 295.634 120.924 296.457 120.734 297.333L117.831 310.813C117.092 314.961 121.082 318.392 125.083 317.041L235.642 287.231C236.666 286.915 237.669 286.566 238.672 286.229L238.841 286.165C280.303 271.736 301.499 240.132 301.499 176.313C301.499 94.9819 267.098 65.9856 200.186 58.1534ZM255.709 222.483C252.183 231.329 247.327 237.715 240.403 242.571C224.802 253.538 196.375 258.647 150.955 258.647C105.534 258.647 77.1181 253.538 61.5168 242.571C54.6029 237.715 49.7368 231.318 46.2112 222.483C41.6828 211125 39.3817 195.588 39.3817 176.313C39.3817 157.038 41.6828 141.511 46.2112 130.153C49.7368 121.308 54.5924 114.921 61.5168 110.066C77.1181 99.0881 105.544 93.9897 150.955 93.9897C196.365 93.9897 224.791 99.0881 240.403 110.066C247.317 114.921 252.183 121.308 255.709 130.153C260.237 141.511 262.538 157.038 262.538 176.313C262.538 195.588 260.237 211.125 255.709 222.483Z" fill="url(#paint0_linear_13050_1663)"/>
-                                                <path d="M110.971 146.142C94.6836 146.142 91.2002 161.046 91.2002 176.32C91.2002 191.594 94.6836 206.499 110.971 206.499C127.258 206.499 130.742 191.594 130.742 176.32C130.742 161.046 127.258 146.142 110.971 146.142Z" fill="url(#paint1_linear_13050_1663)"/>
-                                                <path d="M190.95 146.142C174.663 146.142 171.18 161.047 171.18 176.321C171.18 191.595 174.663 206.499 190.95 206.499C207.238 206.499 210.732 191.595 210.732 176.321C210.732 161.047 207.248 146.142 190.95 146.142Z" fill="url(#paint2_linear_13050_1663)"/>
-                                                <defs>
-                                                <linearGradient id="paint0_linear_13050_1663" x1="20.4928" y1="323.83" x2="313.547" y2="31.3354" gradientUnits="userSpaceOnUse">
-                                                <stop stopColor="#FF598E"/>
-                                                <stop offset="0.3" stopColor="#A83DEB"/>
-                                                <stop offset="0.7" stopColor="#3083FD"/>
-                                                <stop offset="1" stopColor="#8AD9FE"/>
-                                                </linearGradient>
-                                                <linearGradient id="paint1_linear_13050_1663" x1="194.645" y1="134.726" x2="143.996" y2="285.811" gradientUnits="userSpaceOnUse">
-                                                <stop stopColor="#3083FD"/>
-                                                <stop offset="1" stopColor="#A93DEB"/>
-                                                </linearGradient>
-                                                <linearGradient id="paint2_linear_13050_1663" x1="194.645" y1="134.726" x2="143.996" y2="285.811" gradientUnits="userSpaceOnUse">
-                                                <stop stopColor="#3083FD"/>
-                                                <stop offset="1" stopColor="#A93DEB"/>
-                                                </linearGradient>
-                                                </defs>
-                                            </svg>
-                                            <h1 className="text-xl font-bold text-gray-900">お気に入り集約</h1>
+                                <div className="relative p-2">
+                                    {/* 右上固定：閉じるボタン */}
+                                    <button
+                                        onClick={() => {
+                                            console.log('集約レポート閉じるボタン、previousView:', previousView);
+                                            setShowFavorites(false);
+                                            // 前の画面に戻る
+                                            if (previousView === 'favoritesList') {
+                                                console.log('お気に入りリストに戻る');
+                                                setCurrentView('favorites');
+                                                setPreviousView(null);
+                                            } else if (previousView === 'main') {
+                                                console.log('マップビューに戻る');
+                                                setCurrentView('map');
+                                                setPreviousView(null);
+                                            } else {
+                                                console.log('メイン画面に戻る');
+                                            }
+                                        }}
+                                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors z-10"
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+
+                                    {/* 中央：集約レポートラベルとタグ */}
+                                    <div className="flex flex-col items-center justify-center pt-2">
+                                        {/* 中央上：タグ組み合わせ */}
+                                        <div className={`text-m text-center font-${selectedFont} text-gray-900 pr-11 pl-11`}>
+                                            {selectedTags.length > 0 ? selectedTags.join(' × ') : '未選択'}
+                                        </div>
+
+                                        {/* 下部：アイコン配置 */}
+                                        <div className="flex items-center justify-center gap-4 relative w-full">
+                                            {/* 左：時計アイコン */}
+                                            <div className="text-gray-500">
+                                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18Z" stroke="currentColor" strokeWidth="1.5"/>
+                                                    <path d="M10 6V10L13 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                            </div>
+
+                                            {/* 中央：お気に入りボタン */}
+                                            <button
+                                                onClick={(e) => {
+                                                    console.log('📊 集約レポートお気に入りボタンクリック:', selectedTags.join(' × '));
+                                                    e.stopPropagation();
+                                                    toggleFavorites({
+                                                        title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                        type: 'aggregated',
+                                                        tags: selectedTags,
+                                                        articleCount: getMapFilteredArticles().length
+                                                    }, e);
+                                                }}
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                                    isFavorite({
+                                                        title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                        type: 'aggregated',
+                                                        tags: selectedTags
+                                                    }) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                                                }`}
+                                                title={isFavorite({
+                                                    title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                    type: 'aggregated',
+                                                    tags: selectedTags
+                                                }) ? "お気に入りから削除" : "お気に入りに追加"}
+                                            >
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite({
+                                                    title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                    type: 'aggregated',
+                                                    tags: selectedTags
+                                                }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setShowAiHelp(!showAiHelp)}
-                                        className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600 transition-colors"
-                                        title="AI要約について"
-                                    >
-                                        !
-                                    </button>
+
                                 </div>
                                 
                                 {/* AIヘルプポップアップ */}
                                 {showAiHelp && (
                                     <div className="absolute top-full right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-80 z-30">
                                         <div className="flex justify-between items-start mb-3">
-                                            <h4 className="font-semibold text-gray-900">AI要約機能について</h4>
+                                            <h4 className="font-handwriting text-gray-900">AI要約機能について</h4>
                                             <button
                                                 onClick={() => setShowAiHelp(false)}
                                                 className="text-gray-400 hover:text-gray-600"
@@ -1288,38 +2024,6 @@
                                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg mx-4 px-4 mb-4">
                                             <div className="mb-3">
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <h2 className="text-sm font-medium text-gray-700">
-                                                            {selectedTags.join(' × ')} の集約レポート
-                                                        </h2>
-                                                        <button
-                                                            onClick={(e) => addToFavorites({
-                                                                title: `${selectedTags.join(' × ')} の集約レポート`,
-                                                                type: 'aggregation',
-                                                                tags: selectedTags,
-                                                                articleCount: getMapFilteredArticles().length
-                                                            }, e)}
-                                                            className={`p-1 transition-colors pin-button ${
-                                                                isFavorite({
-                                                                    type: 'aggregation',
-                                                                    tags: selectedTags
-                                                                }) 
-                                                                ? 'text-blue-600 hover:text-blue-700' 
-                                                                : 'text-gray-400 hover:text-blue-600'
-                                                            }`}
-                                                            title={isFavorite({
-                                                                type: 'aggregation',
-                                                                tags: selectedTags
-                                                            }) ? "お気に入りから削除" : "お気に入りに追加"}
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite({
-                                                                type: 'aggregation',
-                                                                tags: selectedTags
-                                                            }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1363,7 +2067,7 @@
                                         <div>
                                             {/* トップ5記事（カルーセル） */}
                                             <div className="mb-6">
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-3 mx-4">注目記事</h3>
+                                                <h3 className={`text-xl font-${selectedFont} text-gray-900 mb-3 mx-4`}>注目記事</h3>
                                                 <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide pl-4">
                                                     {getMapFilteredArticles().slice(0, 5).map((article, index) => (
                                                         <div
@@ -1385,10 +2089,10 @@
                                                                 </div>
                                                             </div>
                                                             <div className="p-4">
-                                                                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                                                                <h3 className={`font-${selectedFont} text-gray-900 mb-2 line-clamp-2`}>
                                                                     {article.title}
                                                                 </h3>
-                                                                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                                                <p className={`text-sm text-gray-600 font-${selectedFont} mb-3 line-clamp-2`}>
                                                                     {article.snippet}
                                                                 </p>
                                                                 <div className="flex items-center justify-between text-xs text-gray-400">
@@ -1404,7 +2108,7 @@
                                             {/* 残りの記事（リスト） */}
                                             {getMapFilteredArticles().length > 5 && (
                                                 <div className="mx-4">
-                                                    <h3 className="text-lg font-semibold text-gray-900 mb-3">その他の記事</h3>
+                                                    <h3 className={`text-xl font-${selectedFont} text-gray-900 mb-3`}>その他の記事</h3>
                                                     <div className="space-y-3">
                                                         {getMapFilteredArticles().slice(5).map((article, index) => (
                                                             <div
@@ -1425,11 +2129,11 @@
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
                                                                         <div className="flex items-start justify-between mb-2">
-                                                                            <h4 className="font-medium text-gray-900 line-clamp-2 flex-1">
+                                                                            <h4 className={`font-${selectedFont} text-gray-900 line-clamp-2 flex-1`}>
                                                                                 {article.title}
                                                                             </h4>
                                                                         </div>
-                                                                        <p className="text-sm text-gray-600 mb-2 line-clamp-1">
+                                                                        <p className={`text-sm text-gray-600 font-${selectedFont} mb-2 line-clamp-1`}>
                                                                             {article.snippet}
                                                                         </p>
                                                                         <div className="flex items-center justify-between text-xs text-gray-400">
@@ -1447,20 +2151,25 @@
                                     </>
                                 ) : (
                                     /* タグ未選択時の表示 */
-                                    <div className="text-center py-16 mx-4">
-                                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <svg width="32" height="26" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path fillRule="evenodd" clipRule="evenodd" d="M20.4119 1.54257C18.2944 -0.514191 14.8606 -0.514191 12.7426 1.54257L11.0003 3.23455L9.25744 1.54257C7.13997 -0.514191 3.70618 -0.514191 1.5881 1.54257C-0.529368 3.59754 -0.529368 6.93108 1.5881 8.98665L3.33158 10.6792L3.33097 10.6798L10.7834 17.9127C10.9025 18.0291 11.0975 18.0291 11.2172 17.9127L11.8528 17.2953C11.8534 17.2953 11.8534 17.2953 11.8534 17.2947L18.669 10.6798L18.6684 10.6792L20.4119 8.98665C22.5294 6.93108 22.5294 3.59754 20.4119 1.54257Z" fill="#d1d5db"/>
+                                    <div className="text-center py-12 px-6">
+                                        <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" stroke="#3b82f6" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <circle cx="7" cy="7" r="1.5" fill="#3b82f6"/>
                                             </svg>
                                         </div>
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">タグを選択してください</h3>
-                                        <p className="text-gray-600 mb-6">マップでタグを選択すると、関連記事の集約レポートが表示されます</p>
+                                        <h3 className="text-xl font-medium text-gray-900 mb-4">レポート作成にはタグ選択が必要です</h3>
+                                        <div className="space-y-3 text-gray-600 mb-8 max-w-md mx-auto">
+                                            <p>• マップ画面でタグノード（○）をクリック</p>
+                                            <p>• または記事リスト内のタグをクリック</p>
+                                            <p>• 選択したタグに関連する記事の集約レポートが作成されます</p>
+                                        </div>
                                         <button
                                             onClick={() => {
                                                 setShowFavorites(false);
                                                 setCurrentView('map');
                                             }}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors"
                                         >
                                             マップに戻る
                                         </button>
@@ -1608,7 +2317,7 @@
                                     </div>
 
                                     {/* ビュー切り替えボタン（右端固定） */}
-                                    <div className="absolute top-2 right-4 z-20 flex bg-gray-100 rounded-lg p-1 shadow-lg">
+                                    <div className="absolute top-0 right-4 z-20 flex bg-gray-100 rounded-lg p-1 shadow-lg">
                                         <button
                                             onClick={() => setMapViewMode('grid')}
                                             className={`p-1.5 rounded transition-all ${
@@ -1639,31 +2348,47 @@
                                             </svg>
                                         </button>
                                         <button
-                                            onClick={() => setShowFavorites(true)}
-                                            className="p-1.5 rounded transition-all text-gray-500 hover:text-blue-600"
+                                            onClick={() => {
+                                                console.log('集約ボタンクリック: マップビューから');
+                                                setPreviousView('main'); // マップビューから来たことを記録
+                                                setShowFavorites(true);
+                                            }}
+                                            className="p-1.5 rounded transition-all text-gray-500 hover:text-gray-700"
                                             title="お気に入り集約"
                                         >
-                                            <svg width="16" height="17" viewBox="0 0 302 318" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M200.186 58.1534C199.13 58.0267 198.571 56.8128 199.194 55.9578L223.25 22.4859C227.198 17.0075 226.586 9.48138 221.815 4.71024C216.611 -0.49368 208.229 -0.694237 202.793 4.26691L148.041 54.1633C147.524 54.6383 146.722 54.6489 146.194 54.1739L105.819 18.1053C100.277 13.1547 91.8326 13.387 86.5864 18.6437C81.8153 23.4042 81.1186 30.8882 84.9292 36.451L98.641 56.4961C99.2321 57.3511 98.6832 58.5228 97.6593 58.66C33.4389 67.1995 0.420898 96.6603 0.420898 176.313C0.420898 260.536 37.3234 288.646 108.996 295.254C112.437 295.57 115.889 295.697 119.341 295.644C120.238 295.634 120.924 296.457 120.734 297.333L117.831 310.813C117.092 314.961 121.082 318.392 125.083 317.041L235.642 287.231C236.666 286.915 237.669 286.566 238.672 286.229L238.841 286.165C280.303 271.736 301.499 240.132 301.499 176.313C301.499 94.9819 267.098 65.9856 200.186 58.1534ZM255.709 222.483C252.183 231.329 247.327 237.715 240.403 242.571C224.802 253.538 196.375 258.647 150.955 258.647C105.534 258.647 77.1181 253.538 61.5168 242.571C54.6029 237.715 49.7368 231.318 46.2112 222.483C41.6828 211.125 39.3817 195.588 39.3817 176.313C39.3817 157.038 41.6828 141.511 46.2112 130.153C49.7368 121.308 54.5924 114.921 61.5168 110.066C77.1181 99.0881 105.544 93.9897 150.955 93.9897C196.365 93.9897 224.791 99.0881 240.403 110.066C247.317 114.921 252.183 121.308 255.709 130.153C260.237 141.511 262.538 157.038 262.538 176.313C262.538 195.588 260.237 211.125 255.709 222.483Z" fill="currentColor"/>
-                                                <path d="M110.971 146.142C94.6836 146.142 91.2002 161.046 91.2002 176.32C91.2002 191.594 94.6836 206.499 110.971 206.499C127.258 206.499 130.742 191.594 130.742 176.32C130.742 161.046 127.258 146.142 110.971 146.142Z" fill="currentColor"/>
-                                                <path d="M190.95 146.142C174.663 146.142 171.18 161.047 171.18 176.321C171.18 191.595 174.663 206.499 190.95 206.499C207.238 206.499 210.732 191.595 210.732 176.321C210.732 161.047 207.248 146.142 190.95 146.142Z" fill="currentColor"/>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                {/* ブックマークアイコン（お気に入りリストと同じ） */}
+                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                {/* プラスアイコン */}
+                                                <circle cx="18" cy="6" r="6" fill="currentColor" stroke="white" strokeWidth="1"/>
+                                                <path d="M15.5 6h5M18 3.5v5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                                             </svg>
                                         </button>
                                     </div>
 
                                     {/* 記事コンテンツ */}
-                                    <div className="pt-8 pb-4 px-4 h-full overflow-y-auto">
+                                    <div className="pt-11 pb-4 px-4 h-full overflow-y-auto">
                                         {/* フィルタヘッダー */}
                                         <div className="mb-3">
                                             {/* フィルタ表示（横スクロール1行） */}
                                             {selectedTags.length > 0 && (
                                                 <div className="flex items-center gap-2 text-sm text-gray-500 overflow-x-auto scrollbar-hide">
-                                                    <span className="flex-shrink-0">フィルタ:</span>
                                                     <div className="flex gap-2 flex-nowrap">
                                                         {selectedTags.map(tag => (
-                                                            <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-xs whitespace-nowrap flex-shrink-0">
+                                                            <button
+                                                                key={tag}
+                                                                onClick={() => {
+                                                                    const newTags = selectedTags.filter(t => t !== tag);
+                                                                    setSelectedTags(newTags);
+                                                                }}
+                                                                className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full text-xs whitespace-nowrap flex-shrink-0 transition-colors cursor-pointer flex items-center gap-1"
+                                                                title={`${tag}を削除`}
+                                                            >
                                                                 {tag}
-                                                            </span>
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                                                </svg>
+                                                            </button>
                                                         ))}
                                                         <button
                                                             onClick={() => setSelectedTags([])}
@@ -1708,9 +2433,48 @@
                                                             
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex justify-between items-start mb-1">
-                                                                    <h4 className="font-medium text-gray-900 text-sm line-clamp-2 flex-1">{article.title}</h4>
+                                                                    <h4 className={`font-${selectedFont} text-gray-900 text-sm font-bold line-clamp-2 flex-1`}>{article.title}</h4>
+                                                                    {/* お気に入りボタン */}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            console.log('⭐ 記事お気に入りボタンクリック:', article.title);
+                                                                            e.stopPropagation();
+                                                                            toggleFavorites({
+                                                                                title: article.title,
+                                                                                type: 'article',
+                                                                                tags: article.tags,
+                                                                                articleCount: 1,
+                                                                                articleData: {
+                                                                                    title: article.title,
+                                                                                    snippet: article.snippet,
+                                                                                    source: article.source,
+                                                                                    tags: article.tags
+                                                                                }
+                                                                            }, e);
+                                                                        }}
+                                                                        className={`ml-2 flex-shrink-0 ${
+                                                                            isFavorite({
+                                                                                title: article.title,
+                                                                                type: 'article',
+                                                                                tags: article.tags
+                                                                            }) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                                                                        } transition-colors`}
+                                                                        title={isFavorite({
+                                                                            title: article.title,
+                                                                            type: 'article',
+                                                                            tags: article.tags
+                                                                        }) ? "お気に入りから削除" : "お気に入りに追加"}
+                                                                    >
+                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill={isFavorite({
+                                                                            title: article.title,
+                                                                            type: 'article',
+                                                                            tags: article.tags
+                                                                        }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+                                                                        </svg>
+                                                                    </button>
                                                                 </div>
-                                                                <p className="text-xs text-gray-600 mb-2 line-clamp-2">{article.snippet}</p>
+                                                                <p className={`text-xs text-gray-600 font-${selectedFont} mb-2 line-clamp-2`}>{article.snippet}</p>
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-xs text-gray-400">{article.source}</span>
                                                                     <div className="flex gap-1">
@@ -1769,7 +2533,7 @@
                                                                 : 'opacity-0 group-hover:opacity-100'
                                                             }`}>
                                                                 <div className="absolute bottom-0 left-0 right-0 p-2">
-                                                                    <h4 className="text-white font-medium text-xs line-clamp-2 mb-1">
+                                                                    <h4 className={`text-white font-${selectedFont} text-xs line-clamp-2 mb-1`}>
                                                                         {article.title}
                                                                     </h4>
                                                                     <div className="text-white/80 text-xs">
@@ -1809,7 +2573,7 @@
                                         {getMapFilteredArticles().length === 0 && (
                                             <div className="text-center py-8 text-gray-500">
                                                 <div className="text-4xl mb-2">📰</div>
-                                                <p className="text-sm">関連記事が見つかりません</p>
+                                                <p className={`text-sm font-${selectedFont}`}>関連記事が見つかりません</p>
                                             </div>
                                         )}
                                     </div>
@@ -1860,11 +2624,20 @@
                                 <button
                                     onClick={() => {
                                         try {
-                                            console.log('お気に入りボタンクリック、現在の状態:', showFavoritesList);
+                                            console.log('お気に入りボタンクリック、現在のビュー:', currentView);
+                                            console.log('showFavorites:', showFavorites);
                                             console.log('お気に入りレポート数:', favoriteReports.length);
-                                            setShowFavoritesList(!showFavoritesList);
+
+                                            // レポート詳細が開いている場合やお気に入り集約画面の場合はマップに戻る
+                                            if (showFavorites || currentView === 'favorites') {
+                                                setShowFavorites(false);
+                                                setCurrentView('map');
+                                            } else {
+                                                // マップからの場合はお気に入りリストを表示
+                                                setCurrentView('favorites');
+                                            }
                                         } catch (error) {
-                                            console.error('お気に入りリスト表示エラー:', error);
+                                            console.error('お気に入りページ表示エラー:', error);
                                         }
                                     }}
                                     className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-all mx-0.5 relative"
@@ -1918,76 +2691,6 @@
                             </div>
                         )}
                         
-                        {/* お気に入りリストモーダル */}
-                        {showFavoritesList && (
-                            <div className="absolute bottom-20 right-4 bg-white rounded-lg shadow-xl border w-80 max-h-96 overflow-hidden">
-                                <div className="p-4 border-b bg-gray-50">
-                                    <div className="flex justify-between items-center">
-                                        <h3 className="font-semibold text-gray-900">お気に入りレポート</h3>
-                                        <button
-                                            onClick={() => setShowFavoritesList(false)}
-                                            className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-xs"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div className="max-h-64 overflow-y-auto">
-                                    {favoriteReports.length === 0 ? (
-                                        <div className="p-4 text-center text-gray-500">
-                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-2 text-gray-300">
-                                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                            </svg>
-                                            <p className="text-sm">お気に入りレポートがありません</p>
-                                            <p className="text-xs text-gray-400 mt-1">集約レポートのピンアイコンをクリックして追加できます</p>
-                                        </div>
-                                    ) : (
-                                        <div className="p-2">
-                                            {favoriteReports.map((report, index) => (
-                                                <div key={report.id || index} className="p-3 hover:bg-gray-50 rounded-lg mb-2 border border-gray-100">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex-1">
-                                                            <h4 className="text-sm font-medium text-gray-900 mb-1">{report.title || '無題のレポート'}</h4>
-                                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                                {(report.tags || []).map((tag, tagIndex) => (
-                                                                    <span key={tagIndex} className="px-2 py-0.5 text-xs bg-blue-100 text-blue-600 rounded-full">
-                                                                        {tag}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                            <div className="text-xs text-gray-500">
-                                                                {report.articleCount || 0}件の記事 • {report.timestamp ? new Date(report.timestamp).toLocaleDateString('ja-JP') : '日付不明'}
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => removeFromFavorites(report.id, e)}
-                                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                            title="削除"
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            // レポートを再現
-                                                            setSelectedTags(report.tags || []);
-                                                            setShowFavorites(true);
-                                                            setShowFavoritesList(false);
-                                                        }}
-                                                        className="w-full mt-2 px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                                    >
-                                                        レポートを表示
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </nav>
                 </div>
             );
