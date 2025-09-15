@@ -25,14 +25,197 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./css/styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Dynamic font classes */
+        .font-normal,
+        .font-normal * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        }
+
+        .font-handwriting,
+        .font-handwriting * {
+            font-family: 'Zen Kurenaido', cursive !important;
+        }
+
+        .font-klee,
+        .font-klee * {
+            font-family: 'Klee One', cursive !important;
+        }
+
+        .font-yusei,
+        .font-yusei * {
+            font-family: 'Yusei Magic', cursive !important;
+        }
+
+        .font-hachi,
+        .font-hachi * {
+            font-family: 'Hachi Maru Pop', cursive !important;
+        }
+
+        .slider-thumb::-webkit-slider-thumb {
+            appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #f1f5f9;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider-thumb::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .slider-thumb::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+
+        .particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .tag-node {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .tag-node:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Grid layout styles */
+        .article-grid {
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+            grid-auto-flow: dense;
+            grid-auto-rows: minmax(60px, 1fr);
+            align-items: stretch;
+            width: calc(100% + 0.5rem);
+        }
+
+        /* Typography utilities */
+        .text-xs-small {
+            font-size: 8px;
+        }
+
+        /* Pin button animation */
+        .pin-button {
+            transition: all 0.2s ease;
+        }
+
+        .pin-button:hover {
+            transform: scale(1.1);
+        }
+
+        .pin-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Completion animation */
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes checkmark {
+            0% {
+                stroke-dasharray: 0 50;
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-dasharray: 50 0;
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .completion-check {
+            animation: checkmark 0.3s ease-in-out;
+        }
+
+        /* Dynamic layout utilities */
+        .map-height {
+            height: var(--map-height, 60vh);
+        }
+
+        .network-bg {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        .map-area-height {
+            height: var(--map-area-height, 60vh);
+        }
+
+        .balance-bar-bg {
+            background: linear-gradient(to right, #ec4899 0%, #3b82f6 33%, #06b6d4 66%, #10b981 100%);
+            background-size: 100% 100%;
+        }
+
+        /* Force font-bold to override global font settings */
+        .font-bold {
+            font-weight: 700 !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-50">
     <div id="root"></div>
     <canvas id="particle-canvas" class="particle-canvas"></canvas>
     
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
         
         // データを外部ファイルから読み込み
         let inlineData = {
@@ -328,7 +511,13 @@ JSON形式で以下の構造：
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorText = await response.text();
+                        console.error('❌ Gemini API エラー詳細:', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            body: errorText
+                        });
+                        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
                     }
 
                     const data = await response.json();
@@ -340,8 +529,12 @@ JSON形式で以下の構造：
                         const articleData = JSON.parse(jsonMatch[0]);
                         console.log('✅ AI記事生成完了:', articleData.title);
 
+                        // コンテンツに情報源を追加
+                        const contentWithSource = articleData.content + '\n\n---\n\n<small>*この記事は、WebサイトやSNSの最新情報を基にAIが生成しました。情報の正確性については各公式サイトでご確認ください。*</small>';
+
                         return {
                             ...articleData,
+                            content: contentWithSource,
                             id: `ai_${Date.now()}_${tag}`,
                             isExternal: true,
                             isAIGenerated: true,
@@ -432,11 +625,14 @@ ${tag}は今後も注目すべき分野として発展が期待されていま�
                     snippet: `${tag}の基礎知識と最新動向について詳しく解説します。`
                 };
 
+                // コンテンツに情報源を追加
+                const contentWithSource = content.content + '\n\n---\n\n<small>*この記事は、基本的な知識と一般的な情報を基にAIが生成しました。最新情報については各公式サイトでご確認ください。*</small>';
+
                 return {
                     id: `fallback_${Date.now()}_${tag}`,
                     title: content.title,
                     snippet: content.snippet,
-                    content: content.content,
+                    content: contentWithSource,
                     tags: [tag],
                     source: 'AI生成記事',
                     topicalityScore: 75,
@@ -458,7 +654,7 @@ ${tag}は今後も注目すべき分野として発展が期待されていま�
                         apiKey = window.GEMINI_API_KEY || eval('GEMINI_API_KEY');
                     } catch (e) {
                         console.log('⚠️ GEMINI_API_KEY未定義、フォールバック使用');
-                        apiKey = 'AIzaSyAhi-WsLRswPCmaHsWQVzd1clBanpNZj3Y'; // フォールバックキー
+                        apiKey = 'AIzaSyB3ahJ51vpeeYNh_dlq_WQbeK2386O-aPQ'; // フォールバックキー
                     }
 
                     console.log('🔑 使用するAPIキー:', apiKey ? '設定済み' : '未設定');
@@ -573,7 +769,13 @@ JSON形式で以下の構造：
                     });
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        const errorText = await response.text();
+                        console.error('❌ Gemini API エラー詳細:', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            body: errorText
+                        });
+                        throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
                     }
 
                     const data = await response.json();
@@ -585,8 +787,12 @@ JSON形式で以下の構造：
                         const articleData = JSON.parse(jsonMatch[0]);
                         console.log('✅ コンテキスト付きAI記事生成完了:', articleData.title);
 
+                        // コンテンツに情報源を追加
+                        const contentWithSource = articleData.content + '\n\n---\n\n<small>*この記事は、WebサイトやSNSの最新情報を基にAIが生成しました。情報の正確性については各公式サイトでご確認ください。*</small>';
+
                         return {
                             ...articleData,
+                            content: contentWithSource,
                             id: `ai_${Date.now()}_${tag}`,
                             isExternal: true,
                             isAIGenerated: true,
@@ -674,6 +880,7 @@ JSON形式で以下の構造：
             }
         };
 
+
         // Gemini API統合サービス
         const GeminiReportService = {
             generateReport: async (tags, articles, externalData, apiKey) => {
@@ -734,7 +941,7 @@ JSON形式で以下の構造：
 
                 prompt += `\n以下の形式でレポートを作成してください：
                 1. エグゼクティブサマリー
-                2. 現状分析
+                2. 現状把握
                 3. トレンドと展望
                 4. 推奨事項
                 5. 参考リソース
@@ -750,15 +957,15 @@ JSON形式で以下の構造：
                     content: `# ${tagString} 統合レポート
 
 ## エグゼクティブサマリー
-選択されたタグ「${tagString}」に関する包括的な分析レポートです。関連記事${articles.length}件と外部データ${externalData.length}件を基に、現状分析からトレンド予測まで詳細に解説します。
+選択されたタグ「${tagString}」に関する包括的なレポートです。関連記事${articles.length}件と外部データ${externalData.length}件を基に、現状把握からトレンド予測まで詳細に解説します。
 
-## 現状分析
+## 現状把握
 ${articles.slice(0, 3).map((article, index) =>
     `**${index + 1}. ${article.title}**\n${article.snippet}`
 ).join('\n\n')}
 
 ## トレンドと展望
-現在の市場動向や技術進歩を踏まえ、今後12-24ヶ月の展望を分析します：
+現在の市場動向や技術進歩を踏まえ、今後12-24ヶ月の展望を検討します：
 
 ${externalData.map(data => {
     if (data.temperature !== undefined) {
@@ -849,13 +1056,33 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
             const [selectedKeywordDetail, setSelectedKeywordDetail] = useState(null);
             const [isLoadingKeywordDetail, setIsLoadingKeywordDetail] = useState(false);
             const [showAnalysisResults, setShowAnalysisResults] = useState(false); // 分析結果の表示制御
-            const [activeTab, setActiveTab] = useState('all'); // アクティブなタブ ("all" or specific tag)
+            const [activeTab, setActiveTab] = useState(''); // アクティブなタブ (specific tag)
             const [multiTagReport, setMultiTagReport] = useState(null); // 複数タグ分析結果
             const [articleSortMode, setArticleSortMode] = useState('latest'); // 記事ソートモード ('latest' or 'topical')
             const [externalArticles, setExternalArticles] = useState([]); // 外部取得記事
             const [isLoadingExternalContent, setIsLoadingExternalContent] = useState(false); // 外部コンテンツ読み込み状態
             // Gemini API Key（.env.localから動的に取得）
+            const [geminiApiKey, setGeminiApiKey] = useState(null);
+
+            // グローバル変数として宣言
             let GEMINI_API_KEY = null;
+
+
+            // selectedTagsが変更された時の処理
+            useEffect(() => {
+                if (selectedTags.length === 0) {
+                    setShowAnalysisResults(false);
+                    setActiveTab(''); // タグがない時はactiveTabもリセット
+                } else {
+
+                    // activeTabが未設定または有効でない場合、最初のタグを設定
+                    if (!activeTab || !selectedTags.includes(activeTab)) {
+                        const firstTag = selectedTags[0];
+                        setActiveTab(firstTag);
+                        console.log('📌 activeTab自動設定:', firstTag);
+                    }
+                }
+            }, [selectedTags, activeTab]);
 
             // 外部コンテンツ取得のuseEffect
             useEffect(() => {
@@ -875,10 +1102,10 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                         filteredArticles = baseArticles.filter(article =>
                             article.tags.some(tag => selectedTags.includes(tag))
                         );
-                    } else if (activeTab === 'all') {
-                        // 「すべて」タブ：選択されたすべてのタグに関連する記事
+                    } else if (selectedTags.includes(activeTab)) {
+                        // 特定タグの記事を表示
                         filteredArticles = baseArticles.filter(article =>
-                            article.tags.some(tag => selectedTags.includes(tag))
+                            article.tags.includes(activeTab)
                         );
                     } else {
                         // 個別タグタブ：そのタグを含む記事のみ
@@ -898,7 +1125,7 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                         console.log('📡 外部コンテンツ取得開始:', { activeTab, selectedTags });
                         setIsLoadingExternalContent(true);
                         try {
-                            const tagsToFetch = activeTab === 'all' ? selectedTags : [activeTab];
+                            const tagsToFetch = selectedTags.includes(activeTab) ? [activeTab] : selectedTags;
                             console.log('🤖 AI記事生成開始:', tagsToFetch);
                             console.log('📊 記事データ提供:', articles.length, '件');
                             const externalContent = await AIContentGenerator.fetchAllContent(tagsToFetch, articles);
@@ -956,7 +1183,7 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                     console.error('❌ .env.local読み込みエラー:', error);
 
                     // フォールバック: 更新されたAPIキーを使用
-                    GEMINI_API_KEY = 'AIzaSyAhi-WsLRswPCmaHsWQVzd1clBanpNZj3Y';
+                    GEMINI_API_KEY = 'AIzaSyB3ahJ51vpeeYNh_dlq_WQbeK2386O-aPQ';
                     console.log('🔄 フォールバックAPIキーを使用:', GEMINI_API_KEY.substring(0, 10) + '...');
                     return GEMINI_API_KEY;
                 }
@@ -978,7 +1205,10 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
 
             // ビジュアル化レポート生成機能
             const generateVisualReport = async (selectedTags, articles) => {
+                console.log('📊 レポート生成開始:', { selectedTags, articlesCount: articles?.length });
+
                 if (!selectedTags || selectedTags.length === 0) {
+                    console.log('⚠️ 選択されたタグがありません');
                     return;
                 }
 
@@ -1031,6 +1261,8 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
                     console.log('📊 ビジュアルレポートが生成されました:', visualReport);
                     console.log('🔍 キーワード情報:', visualReport.keywords);
                     console.log('📈 トピック情報:', visualReport.topics);
+                    console.log('📈 トレンド情報:', visualReport.trends);
+                    console.log('📰 ニュース情報:', visualReport.news);
 
                 } catch (error) {
                     console.error('レポート生成エラー:', error);
@@ -1759,6 +1991,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                 setIsGeneratingReport(false);
                 setReportLoadingProgress(0);
                 setShowAnalysisResults(false); // 分析結果を非表示に
+                setActiveTab(''); // activeTabをリセット
             };
 
             // キーワードクリック時の処理（詳細表示のみ）
@@ -2985,9 +3218,6 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                         >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex flex-col flex-1">
-                                                        <span className={`text-sm font-${selectedFont} text-gray-900`}>
-                                                            {(() => { const tags = report.tags || []; return tags.length === 0 ? '無題のレポート' : tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}` : `${tags[0]}など${tags.length}分野`; })()}
-                                                        </span>
                                                         {/* タグ一覧を表示 */}
                                                         {report.tags && report.tags.length > 0 && (
                                                             <div className="flex flex-wrap gap-1 mt-1">
@@ -3435,7 +3665,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                     {showFavorites && (
                         <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
                             {/* ヘッダー */}
-                            <div className="bg-white border-b border-gray-200 sticky top-0 z-10 relative">
+                            <div className="bg-white border-b border-gray-200 sticky top-0 z-20 relative">
                                 <div className="relative p-2">
                                     {/* 右上固定：閉じるボタン */}
                                     <button
@@ -3446,7 +3676,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                             setShowAnalysisResults(false);
                                             setGeneratedReport(null);
                                             setMultiTagReport(null);
-                                            setActiveTab('all');
+                                            setActiveTab('');
                                             setArticleSortMode('latest');
                                             setSelectedKeywordDetail(null);
 
@@ -3474,10 +3704,6 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
 
                                     {/* 中央：集約レポートラベルとタグ */}
                                     <div className="flex flex-col items-center justify-center pt-2">
-                                        {/* 中央上：タグ組み合わせ */}
-                                        <div className={`text-m text-center font-${selectedFont} text-gray-900 pr-11 pl-11`}>
-                                            {selectedTags.length === 0 ? '未選択' : selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}
-                                        </div>
 
                                         {/* 下部：アイコン配置 */}
                                         <div className="flex items-center justify-center gap-4 relative w-full">
@@ -3492,10 +3718,12 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                             {/* 中央：お気に入りボタン */}
                                             <button
                                                 onClick={(e) => {
-                                                    console.log('📊 集約レポートお気に入りボタンクリック:', selectedTags.length === 1 ? selectedTags[0] : `${selectedTags[0]}と${selectedTags[1]}`);
+                                                    // シンプルなタイトルを使用
+                                                    const titleToUse = `集約レポート: ${selectedTags.join('×')}`;
+                                                    console.log('📊 集約レポートお気に入りボタンクリック:', titleToUse);
                                                     e.stopPropagation();
                                                     toggleFavorites({
-                                                        title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
+                                                        title: titleToUse,
                                                         type: 'aggregated',
                                                         tags: selectedTags,
                                                         articleCount: getMapFilteredArticles().length
@@ -3503,19 +3731,19 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                 }}
                                                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                                                     isFavorite({
-                                                        title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
+                                                        title: `集約レポート: ${selectedTags.join('×')}`,
                                                         type: 'aggregated',
                                                         tags: selectedTags
                                                     }) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
                                                 }`}
                                                 title={isFavorite({
-                                                    title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
+                                                    title: `集約レポート: ${selectedTags.join('×')}`,
                                                     type: 'aggregated',
                                                     tags: selectedTags
                                                 }) ? "お気に入りから削除" : "お気に入りに追加"}
                                             >
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite({
-                                                    title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
+                                                    title: `集約レポート: ${selectedTags.join('×')}`,
                                                     type: 'aggregated',
                                                     tags: selectedTags
                                                 }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3547,44 +3775,63 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                         </p>
                                     </div>
                                 )}
+
+                                {/* タブナビゲーション - ヘッダー内 */}
+                                {selectedTags.length > 1 && (
+                                    <div className="border-t border-gray-200 bg-white mt-2 pt-2">
+                                        <div className="flex gap-2 overflow-x-auto px-4 py-1">
+                                            {/* 各タグのタブ */}
+                                            {selectedTags.map((tag) => (
+                                                <div key={tag} className="relative">
+                                                    <button
+                                                        onClick={() => setActiveTab(tag)}
+                                                        className={`px-3 py-1.5 pr-8 rounded-full whitespace-nowrap transition-all text-sm font-${selectedFont} ${
+                                                            activeTab === tag
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        }`}
+                                                    >
+                                                        {tag}
+                                                    </button>
+                                                    {/* 削除ボタン */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const newTags = selectedTags.filter(t => t !== tag);
+                                                            setSelectedTags(newTags);
+
+                                                            // アクティブタブが削除されたタグの場合、最初のタグに切り替え
+                                                            if (activeTab === tag) {
+                                                                const remainingTags = selectedTags.filter(t => t !== tag);
+                                                                setActiveTab(remainingTags[0] || '');
+                                                            }
+
+                                                            // タグが1つ以下になった場合の処理
+                                                            if (newTags.length <= 1) {
+                                                                setActiveTab(newTags[0] || '');
+                                                            }
+                                                        }}
+                                                        className={`absolute right-1 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-xs transition-colors ${
+                                                            activeTab === tag
+                                                                ? 'text-white/70 hover:text-white hover:bg-white/20'
+                                                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-300'
+                                                        }`}
+                                                        title={`${tag}を削除`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+
 
                             {/* コンテンツ */}
                             <div className="py-4">
                                 {selectedTags.length > 0 ? (
                                     <>
-                                        {/* タブナビゲーション - 複数タグ選択時のみ表示 */}
-                                        {selectedTags.length > 1 && (
-                                            <div className="mb-4">
-                                                <div className="flex gap-2 overflow-x-auto pb-2 px-4">
-                                                    {/* 「すべて」タブ */}
-                                                    <button
-                                                        onClick={() => setActiveTab('all')}
-                                                        className={`px-4 py-2 rounded-full whitespace-nowrap transition-all font-${selectedFont} ${
-                                                            activeTab === 'all'
-                                                                ? 'bg-blue-600 text-white'
-                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                        }`}
-                                                    >
-                                                        すべて
-                                                    </button>
-                                                    {/* 各タグのタブ */}
-                                                    {selectedTags.map((tag) => (
-                                                        <button
-                                                            key={tag}
-                                                            onClick={() => setActiveTab(tag)}
-                                                            className={`px-4 py-2 rounded-full whitespace-nowrap transition-all font-${selectedFont} ${
-                                                                activeTab === tag
-                                                                    ? 'bg-blue-600 text-white'
-                                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                            }`}
-                                                        >
-                                                            {tag}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
 
                                         {/* AI話題・トレンド分析セクション */}
                                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg mx-4 p-4 mb-6">
@@ -3597,22 +3844,30 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                 <h3 className={`text-lg font-${selectedFont} text-gray-900`}>AI話題分析</h3>
                                                 <button
                                                     onClick={async () => {
-                                                        console.log('🚀 分析開始ボタンクリック - selectedTags:', selectedTags);
-                                                        console.log('🔑 現在のAPIキー:', GEMINI_API_KEY ? '設定済み' : '未設定');
+                                                        try {
+                                                            console.log('🚀 分析開始ボタンクリック - selectedTags:', selectedTags);
+                                                            console.log('🔑 現在のAPIキー:', GEMINI_API_KEY ? '設定済み' : '未設定');
 
-                                                        // 複数タグの場合はデフォルトで「すべて」タブを選択
-                                                        if (selectedTags.length > 1) {
-                                                            setActiveTab('all');
-                                                        } else {
-                                                            setActiveTab(selectedTags[0] || 'all');
+                                                            // デフォルトで最初のタグを選択
+                                                            if (selectedTags.length > 0) {
+                                                                setActiveTab(selectedTags[0]);
+                                                                console.log('📌 デフォルトタブ設定:', selectedTags[0]);
+                                                            } else {
+                                                                setActiveTab('');
+                                                            }
+
+                                                            // ソートモードを最新順にリセット
+                                                            setArticleSortMode('latest');
+
+
+                                                            await generateVisualReport(selectedTags, articles);
+                                                            console.log('✅ レポート生成完了 - 分析結果を表示');
+                                                            setShowAnalysisResults(true);
+                                                        } catch (error) {
+                                                            console.error('❌ レポート生成ボタンエラー:', error);
+                                                            setIsGeneratingReport(false);
+                                                            setReportLoadingProgress(0);
                                                         }
-
-                                                        // ソートモードを最新順にリセット
-                                                        setArticleSortMode('latest');
-
-                                                        await generateVisualReport(selectedTags, articles);
-                                                        console.log('✅ レポート生成完了 - 分析結果を表示');
-                                                        setShowAnalysisResults(true);
                                                     }}
                                                     disabled={isGeneratingReport}
                                                     className={`ml-auto px-6 py-3 rounded-lg text-sm font-${selectedFont} font-medium transition-all ${
@@ -3657,11 +3912,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                     return generatedReport?.keywords;
                                                 } else {
                                                     // 複数タグの場合は multiTagReport から取得
-                                                    if (activeTab === 'all') {
-                                                        return multiTagReport?.all;
-                                                    } else {
-                                                        return multiTagReport?.[activeTab];
-                                                    }
+                                                    return multiTagReport?.[activeTab] || multiTagReport?.all;
                                                 }
                                             };
 
@@ -3675,29 +3926,6 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                             return hasKeywordData && showAnalysisResults;
                                         })() && (
                                             <div className="mx-4 mb-6">
-                                                {/* 分析レポート見出し */}
-                                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg mb-0">
-                                                    <div className="flex items-center justify-between">
-                                                        <h3 className={`text-lg font-${selectedFont}`}>
-                                                            📊 {(() => {
-                                                                const tags = selectedTags;
-                                                                return tags.length === 1 ? `${tags[0]}分析レポート` : tags.length === 2 ? `${tags[0]}と${tags[1]}の分析レポート` : `${tags[0]}など${tags.length}分野の分析レポート`;
-                                                            })()}
-                                                        </h3>
-                                                        <button
-                                                            onClick={() => {
-                                                                setGeneratedReport(null);
-                                                                setShowAnalysisResults(false);
-                                                                console.log('🚪 レポートを閉じる：分析結果もリセット');
-                                                            }}
-                                                            className="text-white/80 hover:text-white"
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                                                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
                                                 <div className="bg-white border border-gray-200 rounded-b-lg p-4">
                                                     <div className="space-y-4">
                                                         {(() => {
@@ -3705,7 +3933,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                                 if (selectedTags.length <= 1) {
                                                                     return generatedReport?.keywords;
                                                                 } else {
-                                                                    return activeTab === 'all' ? multiTagReport?.all : multiTagReport?.[activeTab];
+                                                                    return multiTagReport?.[activeTab] || multiTagReport?.all;
                                                                 }
                                                             })();
 
@@ -3808,34 +4036,34 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                         📈 トレンド分析
                                                     </h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                        {generatedReport.trends.map((trend, index) => (
+                                                        {generatedReport.trends && generatedReport.trends.map((trend, index) => (
                                                             <div key={index} className="bg-gray-50 rounded-lg p-3">
                                                                 <div className="flex items-center justify-between mb-2">
                                                                     <span className={`font-${selectedFont} text-sm font-medium`}>
                                                                         {trend.tag}
                                                                     </span>
                                                                     <span className={`text-xs px-2 py-1 rounded ${
-                                                                        trend.change > 0
+                                                                        (trend.change || 0) > 0
                                                                             ? 'bg-green-100 text-green-800'
                                                                             : 'bg-red-100 text-red-800'
                                                                     }`}>
-                                                                        {trend.change > 0 ? '+' : ''}{trend.change.toFixed(1)}%
+                                                                        {(trend.change || 0) > 0 ? '+' : ''}{(trend.change || 0).toFixed(1)}%
                                                                     </span>
                                                                 </div>
                                                                 <div className="h-16 mb-2">
                                                                     <svg width="100%" height="100%" viewBox="0 0 200 60">
                                                                         <polyline
-                                                                            points={trend.trend.map((point, i) =>
-                                                                                `${(i / (trend.trend.length - 1)) * 180 + 10},${60 - (point.value / 100) * 50}`
+                                                                            points={(trend.trend || []).map((point, i) =>
+                                                                                `${(i / Math.max((trend.trend || []).length - 1, 1)) * 180 + 10},${60 - ((point?.value || 0) / 100) * 50}`
                                                                             ).join(' ')}
                                                                             fill="none"
-                                                                            stroke={trend.color}
+                                                                            stroke={trend.color || '#3b82f6'}
                                                                             strokeWidth="2"
                                                                         />
                                                                     </svg>
                                                                 </div>
                                                                 <div className="text-xs text-gray-600">
-                                                                    現在値: {trend.currentValue.toFixed(0)}
+                                                                    現在値: {(trend.currentValue || 0).toFixed(0)}
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -3848,25 +4076,25 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                         🔥 話題のトピック
                                                     </h4>
                                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                                                        {generatedReport.topics.map((topic, index) => (
+                                                        {(generatedReport.topics || []).map((topic, index) => (
                                                             <div key={index} className="relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 hover:shadow-md transition-shadow">
                                                                 <div className="text-center">
                                                                     <div
                                                                         className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-sm font-bold"
-                                                                        style={{ backgroundColor: topic.color }}
+                                                                        style={{ backgroundColor: topic.color || '#3b82f6' }}
                                                                     >
-                                                                        {Math.round(topic.popularity)}
+                                                                        {Math.round(topic.popularity || 0)}
                                                                     </div>
                                                                     <div className={`font-${selectedFont} text-sm text-gray-900 mb-1`}>
-                                                                        {topic.name}
+                                                                        {topic.name || 'Unknown'}
                                                                     </div>
                                                                     <div className="text-xs text-gray-600">
-                                                                        {topic.articleCount}件
+                                                                        {topic.articleCount || 0}件
                                                                     </div>
                                                                     <div className={`text-xs mt-1 ${
-                                                                        topic.growth > 0 ? 'text-green-600' : 'text-red-600'
+                                                                        (topic.growth || 0) > 0 ? 'text-green-600' : 'text-red-600'
                                                                     }`}>
-                                                                        {topic.growth > 0 ? '↗' : '↘'} {Math.abs(topic.growth).toFixed(1)}%
+                                                                        {(topic.growth || 0) > 0 ? '↗' : '↘'} {Math.abs(topic.growth || 0).toFixed(1)}%
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -4115,10 +4343,10 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                         filteredArticles = baseArticles.filter(article =>
                                                             selectedTags.length === 0 || article.tags.some(tag => selectedTags.includes(tag))
                                                         );
-                                                    } else if (activeTab === 'all') {
-                                                        // 「すべて」タブ：選択されたすべてのタグに関連する記事を優先
+                                                    } else if (selectedTags.includes(activeTab)) {
+                                                        // 特定タグ：そのタグを含む記事を優先
                                                         filteredArticles = baseArticles
-                                                            .filter(article => article.tags.some(tag => selectedTags.includes(tag)))
+                                                            .filter(article => article.tags.includes(activeTab))
                                                             .sort((a, b) => {
                                                                 const aTagCount = a.tags.filter(tag => selectedTags.includes(tag)).length;
                                                                 const bTagCount = b.tags.filter(tag => selectedTags.includes(tag)).length;
@@ -4180,16 +4408,10 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                             {selectedTags.length > 1 && (
                                                                 <div className="mx-4 mb-3">
                                                                     <h3 className={`text-lg font-bold font-${selectedFont} text-gray-900`}>
-                                                                        {activeTab === 'all'
-                                                                            ? `${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}の関連記事`
-                                                                            : `${activeTab} の関連記事`
-                                                                        }
+                                                                        {`${activeTab} の関連記事`}
                                                                     </h3>
                                                                     <p className={`text-sm font-${selectedFont} text-gray-600 mt-1`}>
-                                                                        {activeTab === 'all'
-                                                                            ? '選択したタグすべてに関連する記事を表示'
-                                                                            : `「${activeTab}」タグを含む記事のみを表示`
-                                                                        }
+                                                                        {`「${activeTab}」タグを含む記事を表示`}
                                                                     </p>
                                                                 </div>
                                                             )}
@@ -4235,7 +4457,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                             <div className="mx-4">
                                                                 <div className="flex items-center justify-between mb-4">
                                                                     <h3 className={`text-m font-bold font-${selectedFont} text-gray-900`}>
-                                                                        {selectedTags.length > 1 && activeTab !== 'all'
+                                                                        {selectedTags.length > 1 && activeTab
                                                                             ? `${activeTab} に関する記事一覧`
                                                                             : '記事一覧'
                                                                         }
@@ -4335,7 +4557,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                                         AIが関連記事を生成中...
                                                                     </p>
                                                                     <p className={`text-sm font-${selectedFont} text-gray-500 mt-2`}>
-                                                                        「{activeTab === 'all' ? (selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など`) : activeTab}」の詳細記事を作成しています
+                                                                        「{activeTab || (selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など`)}」の詳細記事を作成しています
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -4363,7 +4585,7 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                     </svg>
                                                                     <p className={`font-${selectedFont} text-gray-600`}>
-                                                                        「{activeTab === 'all' ? (selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など`) : activeTab}」に関するコンテンツが見つかりませんでした
+                                                                        「{activeTab || (selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など`)}」に関するコンテンツが見つかりませんでした
                                                                     </p>
                                                                     <p className={`text-sm font-${selectedFont} text-gray-500 mt-2`}>
                                                                         別のタグをお試しください
