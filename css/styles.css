@@ -4,6 +4,32 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* Dynamic font classes */
+.font-normal,
+.font-normal * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.font-handwriting,
+.font-handwriting * {
+    font-family: 'Zen Kurenaido', cursive !important;
+}
+
+.font-klee,
+.font-klee * {
+    font-family: 'Klee One', cursive !important;
+}
+
+.font-yusei,
+.font-yusei * {
+    font-family: 'Yusei Magic', cursive !important;
+}
+
+.font-hachi,
+.font-hachi * {
+    font-family: 'Hachi Maru Pop', cursive !important;
+}
+
 .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     height: 20px;

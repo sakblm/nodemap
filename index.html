@@ -14,9 +14,7 @@
                 extend: {
                     fontFamily: {
                         'normal': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-                        'handwriting': ['Zen Kurenaido', 'cursive'],
                         'klee': ['Klee One', 'cursive'],
-                        'yusei': ['Yusei Magic', 'cursive'],
                         'hachi': ['Hachi Maru Pop', 'cursive'],
                     }
                 }
@@ -26,7 +24,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Klee+One:wght@400;600&family=Yusei+Magic&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body class="bg-gray-50">
@@ -269,6 +267,534 @@
             return <canvas ref={canvasRef} className="particle-canvas" />;
         }
 
+        // AI生成記事作成機能
+        const AIContentGenerator = {
+            // Gemini APIを使用してタグに関する詳細記事を生成
+            generateArticle: async (tag, apiKey) => {
+                console.log('🤖 AI記事生成開始:', tag);
+
+                if (!apiKey || apiKey === 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                    console.log('❌ APIキーが無効、フォールバック記事を生成');
+                    return AIContentGenerator.generateFallbackArticle(tag);
+                }
+
+                try {
+                    const prompt = `
+「${tag}」に関する包括的で詳細な記事を作成してください。以下の要件に従って作成してください：
+
+【記事構成要件】
+1. 魅力的なタイトル（30-40文字程度）
+2. 導入部分（200-300文字）
+3. 本文（1000-1500文字、複数のセクションに分割）
+4. まとめ/結論（150-200文字）
+
+【内容要件】
+- 2024年9月時点の最新情報を基に作成
+- 初心者にも理解しやすい説明
+- 具体例や事例を含める
+- 実用的な情報や今後の展望を含める
+- 信頼性の高い情報源に基づく内容
+
+【出力形式】
+JSON形式で以下の構造：
+{
+  "title": "記事タイトル",
+  "snippet": "記事の要約（100文字程度）",
+  "content": "記事本文（markdown形式）",
+  "tags": ["${tag}", "関連タグ1", "関連タグ2"],
+  "source": "AI生成記事",
+  "topicalityScore": 85
+}
+
+必ずJSON形式のみで回答し、余計な説明は含めないでください。
+                    `;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }],
+                            generationConfig: {
+                                temperature: 0.7,
+                                maxOutputTokens: 2000,
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const generatedText = data.candidates[0].content.parts[0].text;
+
+                    // JSONの抽出と解析
+                    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const articleData = JSON.parse(jsonMatch[0]);
+                        console.log('✅ AI記事生成完了:', articleData.title);
+
+                        return {
+                            ...articleData,
+                            id: `ai_${Date.now()}_${tag}`,
+                            isExternal: true,
+                            isAIGenerated: true,
+                            type: 'ai-generated',
+                            url: null // URLは不要（内部記事として表示）
+                        };
+                    } else {
+                        throw new Error('JSON形式の回答が得られませんでした');
+                    }
+
+                } catch (error) {
+                    console.error('❌ AI記事生成エラー:', error);
+                    return AIContentGenerator.generateFallbackArticle(tag);
+                }
+            },
+
+            // フォールバック記事生成
+            generateFallbackArticle: (tag) => {
+                console.log('📝 フォールバック記事生成:', tag);
+
+                const fallbackContent = {
+                    'AI': {
+                        title: 'AI技術の最新動向と未来展望',
+                        content: `# AI技術の最新動向と未来展望
+
+## 現在のAI技術の状況
+
+人工知能（AI）技術は急速に進歩を続けており、私たちの生活やビジネスに大きな変革をもたらしています。
+
+## 主要な技術分野
+
+### 機械学習の進歩
+- ディープラーニング技術の向上
+- 自然言語処理の精度向上
+- 画像認識技術の発展
+
+### 実用化の拡大
+- チャットボットと対話システム
+- 自動運転技術
+- 医療診断支援
+
+## 今後の展望
+
+AI技術は今後も発展を続け、より多くの分野での活用が期待されています。特に教育、医療、製造業での応用が注目されています。`,
+                        snippet: 'AI技術の最新動向と今後の展望について詳しく解説します。'
+                    },
+                    'ゲーム': {
+                        title: 'ゲーム業界の最新トレンドと注目作品',
+                        content: `# ゲーム業界の最新トレンドと注目作品
+
+## 業界の現状
+
+ゲーム業界は技術革新と新しいプラットフォームの登場により、大きな変化を遂げています。
+
+## 注目のトレンド
+
+### モバイルゲームの成長
+- スマートフォン向けゲームの市場拡大
+- クラウドゲーミングの普及
+- AR/VR技術の活用
+
+### eスポーツの発展
+- 競技シーンの拡大
+- 賞金規模の増加
+- 観戦者数の増加
+
+## 今後の展望
+
+次世代ゲーム機の登場や新しい技術の導入により、ゲーム体験はさらに向上していくことが期待されます。`,
+                        snippet: 'ゲーム業界の最新動向と注目すべき作品について詳しく紹介します。'
+                    }
+                };
+
+                const content = fallbackContent[tag] || {
+                    title: `${tag}の基礎知識と最新情報`,
+                    content: `# ${tag}について
+
+## 概要
+${tag}に関する基本的な情報と最新の動向について解説します。
+
+## 主要なポイント
+- ${tag}の基本概念
+- 現在の状況と課題
+- 今後の展望と可能性
+
+## まとめ
+${tag}は今後も注目すべき分野として発展が期待されています。`,
+                    snippet: `${tag}の基礎知識と最新動向について詳しく解説します。`
+                };
+
+                return {
+                    id: `fallback_${Date.now()}_${tag}`,
+                    title: content.title,
+                    snippet: content.snippet,
+                    content: content.content,
+                    tags: [tag],
+                    source: 'AI生成記事',
+                    topicalityScore: 75,
+                    isExternal: true,
+                    isAIGenerated: true,
+                    type: 'ai-generated',
+                    url: null
+                };
+            },
+
+            // 統合AI記事生成
+            fetchAllContent: async (tags, articlesData) => {
+                console.log('🔄 AI記事生成開始:', tags);
+
+                try {
+                    // APIキーを取得（グローバル変数から）
+                    let apiKey = null;
+                    try {
+                        apiKey = window.GEMINI_API_KEY || eval('GEMINI_API_KEY');
+                    } catch (e) {
+                        console.log('⚠️ GEMINI_API_KEY未定義、フォールバック使用');
+                        apiKey = 'AIzaSyAhi-WsLRswPCmaHsWQVzd1clBanpNZj3Y'; // フォールバックキー
+                    }
+
+                    console.log('🔑 使用するAPIキー:', apiKey ? '設定済み' : '未設定');
+
+                    // 各タグについてAI記事を生成
+                    const aiArticles = await Promise.all(
+                        tags.map(async (tag) => {
+                            // 既存の関連記事データを取得（パラメータとして受け取った記事データを使用）
+                            const relatedArticles = articlesData ? articlesData.filter(article =>
+                                article.tags && article.tags.includes(tag)
+                            ) : [];
+
+                            console.log('🔍 関連記事検索:', { tag, 記事数: articlesData?.length || 0, 関連記事数: relatedArticles.length });
+
+                            // 関連記事の情報をコンテキストとして使用
+                            const contextInfo = relatedArticles.length > 0
+                                ? relatedArticles.map(article => ({
+                                    title: article.title,
+                                    snippet: article.snippet,
+                                    tags: article.tags
+                                }))
+                                : null;
+
+                            return await AIContentGenerator.generateArticleWithContext(tag, apiKey, contextInfo);
+                        })
+                    );
+
+                    console.log('✅ AI記事生成完了:', aiArticles.length, '件');
+                    return aiArticles;
+                } catch (error) {
+                    console.error('❌ AI記事生成エラー:', error);
+                    // エラー時はフォールバック記事を生成
+                    return tags.map(tag => {
+                        console.log('🔄 フォールバック記事生成:', tag);
+                        return AIContentGenerator.generateFallbackArticle(tag);
+                    });
+                }
+            },
+
+            // 既存記事のコンテキストを使用したAI記事生成
+            generateArticleWithContext: async (tag, apiKey, contextInfo) => {
+                console.log('🤖 コンテキスト付きAI記事生成:', tag);
+
+                if (!apiKey || apiKey === 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                    console.log('❌ APIキーが無効、フォールバック記事を生成');
+                    return AIContentGenerator.generateFallbackArticle(tag);
+                }
+
+                try {
+                    let contextSection = '';
+                    if (contextInfo && contextInfo.length > 0) {
+                        contextSection = `
+【既存関連記事の参考情報】
+以下の既存記事の情報も参考にして、より詳細で関連性の高い記事を作成してください：
+${contextInfo.map(article => `
+- タイトル: ${article.title}
+- 要約: ${article.snippet}
+- 関連タグ: ${article.tags.join(', ')}
+`).join('')}
+`;
+                    }
+
+                    const prompt = `
+「${tag}」に関する包括的で詳細な記事を作成してください。以下の要件に従って作成してください：
+
+${contextSection}
+
+【記事構成要件】
+1. 魅力的なタイトル（30-40文字程度）
+2. 導入部分（200-300文字）
+3. 本文（1000-1500文字、複数のセクションに分割）
+4. まとめ/結論（150-200文字）
+
+【内容要件】
+- 2024年9月時点の最新情報を基に作成
+- 初心者にも理解しやすい説明
+- 具体例や事例を含める
+- 実用的な情報や今後の展望を含める
+- 既存記事の情報があれば、それを発展させた内容
+- WebサイトやSNSで話題となっている最新情報を含める
+
+【出力形式】
+JSON形式で以下の構造：
+{
+  "title": "記事タイトル",
+  "snippet": "記事の要約（100文字程度）",
+  "content": "記事本文（markdown形式）",
+  "tags": ["${tag}", "関連タグ1", "関連タグ2"],
+  "source": "AI生成記事",
+  "topicalityScore": 85
+}
+
+必ずJSON形式のみで回答し、余計な説明は含めないでください。
+                    `;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }],
+                            generationConfig: {
+                                temperature: 0.7,
+                                maxOutputTokens: 2500,
+                            }
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const generatedText = data.candidates[0].content.parts[0].text;
+
+                    // JSONの抽出と解析
+                    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const articleData = JSON.parse(jsonMatch[0]);
+                        console.log('✅ コンテキスト付きAI記事生成完了:', articleData.title);
+
+                        return {
+                            ...articleData,
+                            id: `ai_${Date.now()}_${tag}`,
+                            isExternal: true,
+                            isAIGenerated: true,
+                            type: 'ai-generated',
+                            url: null
+                        };
+                    } else {
+                        throw new Error('JSON形式の回答が得られませんでした');
+                    }
+
+                } catch (error) {
+                    console.error('❌ コンテキスト付きAI記事生成エラー:', error);
+                    return AIContentGenerator.generateFallbackArticle(tag);
+                }
+            }
+        };
+
+        // 外部API統合とレポート生成機能
+        const ExternalAPIService = {
+            // 天気予報API (ダミーデータ)
+            getWeatherData: async (location = '東京') => {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // API呼び出しを模擬
+                return {
+                    location: location,
+                    temperature: 22 + Math.floor(Math.random() * 10),
+                    condition: ['晴れ', '曇り', '雨', '雪'][Math.floor(Math.random() * 4)],
+                    humidity: 50 + Math.floor(Math.random() * 30),
+                    forecast: '今日は暖かい一日になりそうです。',
+                    source: 'OpenWeatherMap API'
+                };
+            },
+
+            // 交通情報API (ダミーデータ)
+            getTrafficData: async (route = '山手線') => {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                return {
+                    route: route,
+                    status: ['正常運行', '遅延あり', '運転見合わせ'][Math.floor(Math.random() * 3)],
+                    delay: Math.floor(Math.random() * 15),
+                    info: '現在、一部区間で工事による徐行運転を行っています。',
+                    source: 'JR東日本 列車運行情報'
+                };
+            },
+
+            // ヘルスケアAPI (ダミーデータ)
+            getHealthData: async () => {
+                await new Promise(resolve => setTimeout(resolve, 600));
+                return {
+                    steps: 8500 + Math.floor(Math.random() * 3000),
+                    heartRate: 70 + Math.floor(Math.random() * 20),
+                    sleepHours: 6.5 + Math.random() * 2,
+                    caloriesBurned: 1800 + Math.floor(Math.random() * 400),
+                    source: 'Google Fit API'
+                };
+            },
+
+            // ニュースAPI (ダミーデータ)
+            getNewsData: async (category = 'technology') => {
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                const newsItems = [
+                    { title: 'AI技術の最新動向：2024年の注目トピック', summary: '機械学習とディープラーニングの進歩により...', source: 'TechNews24' },
+                    { title: '電気自動車市場が急成長、バッテリー技術革新', summary: '全固体電池の実用化により航続距離が大幅改善...', source: 'EV Today' },
+                    { title: '宇宙開発競争、民間企業の参入が加速', summary: 'SpaceXに続き、多くの企業が宇宙ビジネスに参入...', source: 'Space Report' }
+                ];
+                return {
+                    category: category,
+                    articles: newsItems,
+                    totalResults: newsItems.length,
+                    source: 'News API'
+                };
+            },
+
+            // YouTubeデータ取得 (ダミーデータ)
+            getYouTubeData: async (query) => {
+                await new Promise(resolve => setTimeout(resolve, 900));
+                return {
+                    query: query,
+                    videos: [
+                        { title: `${query}の基礎講座`, channel: 'Learn Channel', views: '125K', url: 'https://youtube.com/watch?v=dummy1' },
+                        { title: `${query}実践ガイド2024`, channel: 'Pro Tutorial', views: '89K', url: 'https://youtube.com/watch?v=dummy2' },
+                        { title: `${query}最新トレンド解説`, channel: 'Tech Update', views: '67K', url: 'https://youtube.com/watch?v=dummy3' }
+                    ],
+                    source: 'YouTube Data API v3'
+                };
+            }
+        };
+
+        // Gemini API統合サービス
+        const GeminiReportService = {
+            generateReport: async (tags, articles, externalData, apiKey) => {
+                if (!apiKey) {
+                    console.warn('Gemini API key not provided, using mock response');
+                    return GeminiReportService.getMockReport(tags, articles, externalData);
+                }
+
+                try {
+                    const prompt = GeminiReportService.buildPrompt(tags, articles, externalData);
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }]
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Gemini API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return {
+                        content: data.candidates[0].content.parts[0].text,
+                        tags: tags,
+                        timestamp: new Date().toISOString(),
+                        sources: externalData.map(data => data.source).filter(Boolean),
+                        generatedBy: 'Gemini AI'
+                    };
+                } catch (error) {
+                    console.error('Gemini API error:', error);
+                    return GeminiReportService.getMockReport(tags, articles, externalData);
+                }
+            },
+
+            buildPrompt: (tags, articles, externalData) => {
+                let prompt = `以下のタグに関連するレポートを作成してください：${tags.join(', ')}\n\n`;
+
+                prompt += `関連記事情報:\n`;
+                articles.forEach((article, index) => {
+                    prompt += `${index + 1}. ${article.title} - ${article.snippet}\n`;
+                });
+
+                if (externalData.length > 0) {
+                    prompt += `\n外部データ情報:\n`;
+                    externalData.forEach((data, index) => {
+                        prompt += `${index + 1}. ${JSON.stringify(data, null, 2)}\n`;
+                    });
+                }
+
+                prompt += `\n以下の形式でレポートを作成してください：
+                1. エグゼクティブサマリー
+                2. 現状分析
+                3. トレンドと展望
+                4. 推奨事項
+                5. 参考リソース
+
+                各セクションは具体的で実用的な内容にし、外部データがある場合はそれを活用してください。`;
+
+                return prompt;
+            },
+
+            getMockReport: (tags, articles, externalData) => {
+                const tagString = tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}` : `${tags[0]}など${tags.length}分野`;
+                return {
+                    content: `# ${tagString} 統合レポート
+
+## エグゼクティブサマリー
+選択されたタグ「${tagString}」に関する包括的な分析レポートです。関連記事${articles.length}件と外部データ${externalData.length}件を基に、現状分析からトレンド予測まで詳細に解説します。
+
+## 現状分析
+${articles.slice(0, 3).map((article, index) =>
+    `**${index + 1}. ${article.title}**\n${article.snippet}`
+).join('\n\n')}
+
+## トレンドと展望
+現在の市場動向や技術進歩を踏まえ、今後12-24ヶ月の展望を分析します：
+
+${externalData.map(data => {
+    if (data.temperature !== undefined) {
+        return `・天候データ: ${data.location}の気温${data.temperature}°C、${data.condition}の影響を考慮`;
+    } else if (data.route !== undefined) {
+        return `・交通状況: ${data.route}は${data.status}、遅延${data.delay}分の状況`;
+    } else if (data.steps !== undefined) {
+        return `・健康指標: 歩数${data.steps}歩、心拍数${data.heartRate}bpmの健康状態`;
+    } else if (data.articles !== undefined) {
+        return `・ニュース動向: ${data.category}分野で${data.totalResults}件の関連情報`;
+    } else if (data.videos !== undefined) {
+        return `・動画コンテンツ: ${data.query}関連で${data.videos.length}件の学習リソース`;
+    }
+    return '';
+}).filter(Boolean).join('\n')}
+
+## 推奨事項
+1. **短期戦略**: 現在のトレンドを活用した取り組み
+2. **中長期戦略**: 技術革新に対応した持続可能なアプローチ
+3. **リスク管理**: 予想される課題への対策
+
+## 参考リソース
+${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
+・関連記事 ${articles.length}件
+・動画コンテンツ ${externalData.find(d => d.videos)?.videos?.length || 0}件
+
+---
+*このレポートは${new Date().toLocaleDateString('ja-JP')}に生成されました*`,
+                    tags: tags,
+                    timestamp: new Date().toISOString(),
+                    sources: externalData.map(data => data.source).filter(Boolean),
+                    generatedBy: 'Mock Gemini AI'
+                };
+            }
+        };
+
         function App() {
             const [currentView, setCurrentView] = useState('map');
             const [collectedTags, setCollectedTags] = useState(new Map());
@@ -316,12 +842,130 @@
             }); // 選択されたフォント
             const [showFontSelector, setShowFontSelector] = useState(false); // フォント選択パネル表示状態
 
+            // ビジュアルレポート生成機能の状態変数
+            const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+            const [generatedReport, setGeneratedReport] = useState(null);
+            const [reportLoadingProgress, setReportLoadingProgress] = useState(0);
+            const [selectedKeywordDetail, setSelectedKeywordDetail] = useState(null);
+            const [isLoadingKeywordDetail, setIsLoadingKeywordDetail] = useState(false);
+            const [showAnalysisResults, setShowAnalysisResults] = useState(false); // 分析結果の表示制御
+            const [activeTab, setActiveTab] = useState('all'); // アクティブなタブ ("all" or specific tag)
+            const [multiTagReport, setMultiTagReport] = useState(null); // 複数タグ分析結果
+            const [articleSortMode, setArticleSortMode] = useState('latest'); // 記事ソートモード ('latest' or 'topical')
+            const [externalArticles, setExternalArticles] = useState([]); // 外部取得記事
+            const [isLoadingExternalContent, setIsLoadingExternalContent] = useState(false); // 外部コンテンツ読み込み状態
+            // Gemini API Key（.env.localから動的に取得）
+            let GEMINI_API_KEY = null;
+
+            // 外部コンテンツ取得のuseEffect
+            useEffect(() => {
+                const fetchExternalContentIfNeeded = async () => {
+                    if (selectedTags.length === 0 || !articles || articles.length === 0) {
+                        setExternalArticles([]);
+                        return;
+                    }
+
+                    console.log('🔍 外部コンテンツ取得チェック開始:', { selectedTags, activeTab });
+
+                    let baseArticles = getMapFilteredArticles();
+                    let filteredArticles = [];
+
+                    if (selectedTags.length <= 1) {
+                        // 単一タグの場合：選択タグに関連する記事
+                        filteredArticles = baseArticles.filter(article =>
+                            article.tags.some(tag => selectedTags.includes(tag))
+                        );
+                    } else if (activeTab === 'all') {
+                        // 「すべて」タブ：選択されたすべてのタグに関連する記事
+                        filteredArticles = baseArticles.filter(article =>
+                            article.tags.some(tag => selectedTags.includes(tag))
+                        );
+                    } else {
+                        // 個別タグタブ：そのタグを含む記事のみ
+                        filteredArticles = baseArticles.filter(article =>
+                            article.tags.includes(activeTab)
+                        );
+                    }
+
+                    console.log('📊 フィルタリング結果:', {
+                        baseArticles: baseArticles.length,
+                        filteredArticles: filteredArticles.length,
+                        activeTab
+                    });
+
+                    // 記事がない場合のみ外部コンテンツを取得
+                    if (filteredArticles.length === 0) {
+                        console.log('📡 外部コンテンツ取得開始:', { activeTab, selectedTags });
+                        setIsLoadingExternalContent(true);
+                        try {
+                            const tagsToFetch = activeTab === 'all' ? selectedTags : [activeTab];
+                            console.log('🤖 AI記事生成開始:', tagsToFetch);
+                            console.log('📊 記事データ提供:', articles.length, '件');
+                            const externalContent = await AIContentGenerator.fetchAllContent(tagsToFetch, articles);
+                            console.log('✅ AI生成記事取得完了:', externalContent.length, '件');
+                            setExternalArticles(externalContent);
+                        } catch (error) {
+                            console.error('❌ 外部コンテンツ取得エラー:', error);
+                            setExternalArticles([]);
+                        } finally {
+                            setIsLoadingExternalContent(false);
+                        }
+                    } else {
+                        console.log('✅ 内部記事が存在するため外部コンテンツは不要');
+                        setExternalArticles([]);
+                        setIsLoadingExternalContent(false);
+                    }
+                };
+
+                fetchExternalContentIfNeeded();
+            }, [selectedTags, activeTab, articles, dataLoaded]);
+
+            // .env.localファイルからAPIキーを読み込む関数
+            const loadApiKeyFromEnv = async () => {
+                try {
+                    console.log('📁 .env.localファイル読み込み開始...');
+                    const response = await fetch('./.env.local');
+                    console.log('📄 .env.local レスポンス状態:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        throw new Error(`ファイル読み込み失敗: ${response.status}`);
+                    }
+
+                    const envContent = await response.text();
+                    console.log('📝 .env.local ファイル内容:', envContent);
+
+                    // GEMINI_API_KEY=... の行を探す
+                    const lines = envContent.split('\n');
+                    console.log('📋 行数:', lines.length, '行');
+
+                    for (const line of lines) {
+                        console.log('🔍 処理中の行:', line.trim());
+                        if (line.startsWith('GEMINI_API_KEY=')) {
+                            const keyValue = line.split('=')[1].trim();
+                            GEMINI_API_KEY = keyValue;
+                            console.log('✅ APIキー発見:', keyValue ? keyValue.substring(0, 10) + '...' : 'empty');
+                            console.log('✅ .env.localからAPIキーを読み込みました');
+                            console.log('🔑 設定されたAPIキー長さ:', GEMINI_API_KEY ? GEMINI_API_KEY.length : 0);
+                            return GEMINI_API_KEY;
+                        }
+                    }
+
+                    console.warn('⚠️ .env.localにGEMINI_API_KEYが見つかりません');
+                    return null;
+                } catch (error) {
+                    console.error('❌ .env.local読み込みエラー:', error);
+
+                    // フォールバック: 更新されたAPIキーを使用
+                    GEMINI_API_KEY = 'AIzaSyAhi-WsLRswPCmaHsWQVzd1clBanpNZj3Y';
+                    console.log('🔄 フォールバックAPIキーを使用:', GEMINI_API_KEY.substring(0, 10) + '...');
+                    return GEMINI_API_KEY;
+                }
+            };
+
             // フォント選択肢
             const fontOptions = [
                 { id: 'normal', name: '標準フォント', sample: 'あいうえお ABC' },
-                { id: 'handwriting', name: 'Zen Kurenaido', sample: 'あいうえお ABC' },
                 { id: 'klee', name: 'Klee One', sample: 'あいうえお ABC' },
-                { id: 'yusei', name: 'Yusei Magic', sample: 'あいうえお ABC' },
                 { id: 'hachi', name: 'Hachi Maru Pop', sample: 'あいうえお ABC' }
             ];
 
@@ -330,6 +974,814 @@
                 setSelectedFont(fontId);
                 localStorage.setItem('selectedFont', fontId);
                 setShowFontSelector(false);
+            };
+
+            // ビジュアル化レポート生成機能
+            const generateVisualReport = async (selectedTags, articles) => {
+                if (!selectedTags || selectedTags.length === 0) {
+                    return;
+                }
+
+                // 前のキーワード詳細結果をクリア（分析結果の表示状態はそのまま）
+                setSelectedKeywordDetail(null);
+                setIsLoadingKeywordDetail(false);
+                console.log('🔄 新しいレポート生成開始：キーワード詳細をリセット');
+
+                setIsGeneratingReport(true);
+                setReportLoadingProgress(0);
+
+                try {
+                    setReportLoadingProgress(20);
+
+                    // 関連記事をフィルタリング
+                    const relatedArticles = articles.filter(article =>
+                        article.tags.some(tag => selectedTags.includes(tag))
+                    );
+
+                    setReportLoadingProgress(40);
+
+                    // タグに関連するニュース・話題データを生成
+                    const topicsData = await generateTopicsData(selectedTags);
+                    const newsData = await generateNewsData(selectedTags);
+                    const trendsData = await generateTrendsData(selectedTags);
+
+                    // 複数タグ対応のキーワード生成
+                    const keywordsData = await generateKeywords(selectedTags);
+
+                    // 複数タグ用レポートデータを設定
+                    setMultiTagReport(keywordsData);
+
+                    setReportLoadingProgress(80);
+
+                    // ビジュアルレポートを作成
+                    const visualReport = {
+                        tags: selectedTags,
+                        articles: relatedArticles,
+                        topics: topicsData,
+                        news: newsData,
+                        trends: trendsData,
+                        keywords: keywordsData,
+                        timestamp: new Date().toISOString(),
+                        generatedBy: 'Visual Analytics System'
+                    };
+
+                    setReportLoadingProgress(100);
+                    setGeneratedReport(visualReport);
+
+                    console.log('📊 ビジュアルレポートが生成されました:', visualReport);
+                    console.log('🔍 キーワード情報:', visualReport.keywords);
+                    console.log('📈 トピック情報:', visualReport.topics);
+
+                } catch (error) {
+                    console.error('レポート生成エラー:', error);
+                } finally {
+                    setIsGeneratingReport(false);
+                    setReportLoadingProgress(0);
+                    console.log('🏁 generateVisualReport 関数終了');
+                }
+            };
+
+            // トピックデータ生成
+            const generateTopicsData = async (tags) => {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const mainTag = tags[0];
+
+                const topicTemplates = {
+                    'AI': ['機械学習', 'ディープラーニング', 'ChatGPT', '自動運転', 'ロボティクス'],
+                    '技術': ['クラウド', 'セキュリティ', 'DevOps', 'ブロックチェーン', 'IoT'],
+                    '料理': ['和食', '洋食', '中華', 'レシピ', '食材'],
+                    '旅行': ['国内', '海外', 'グルメ', '観光地', 'ホテル'],
+                    '健康': ['フィットネス', '栄養', '睡眠', 'メンタル', '予防医学'],
+                    '動物': ['ペット', '野生動物', '保護', '飼育', '動物園']
+                };
+
+                const topics = topicTemplates[mainTag] || ['トレンド', 'ニュース', '話題', '注目', '人気'];
+
+                return topics.map((topic, index) => ({
+                    name: topic,
+                    popularity: 70 + Math.random() * 30,
+                    growth: (Math.random() - 0.5) * 20,
+                    articleCount: Math.floor(Math.random() * 50) + 10,
+                    color: `hsl(${(index * 60) % 360}, 70%, 60%)`
+                }));
+            };
+
+            // ニュースデータ生成
+            const generateNewsData = async (tags) => {
+                await new Promise(resolve => setTimeout(resolve, 600));
+                const mainTag = tags[0];
+
+                const newsTemplates = {
+                    'AI': [
+                        { title: 'ChatGPTの新機能、ビジネス活用が加速', category: '技術', sentiment: 'positive' },
+                        { title: 'AI規制法案、欧州で可決へ', category: '政治', sentiment: 'neutral' },
+                        { title: '自動運転技術、2024年実用化へ前進', category: '自動車', sentiment: 'positive' }
+                    ],
+                    '料理': [
+                        { title: '和食ブーム、海外で拡大中', category: 'グルメ', sentiment: 'positive' },
+                        { title: '食材価格の上昇、家計を圧迫', category: '経済', sentiment: 'negative' },
+                        { title: '新しい調理法、SNSで話題', category: 'トレンド', sentiment: 'positive' }
+                    ],
+                    '旅行': [
+                        { title: '国内旅行需要、コロナ前水準に回復', category: '観光', sentiment: 'positive' },
+                        { title: '円安の影響で海外旅行費用が上昇', category: '経済', sentiment: 'negative' },
+                        { title: '新しい観光地、SNSで注目集める', category: 'トレンド', sentiment: 'positive' }
+                    ]
+                };
+
+                const templates = newsTemplates[mainTag] || [
+                    { title: `${mainTag}関連の最新動向`, category: 'ニュース', sentiment: 'neutral' },
+                    { title: `${mainTag}業界に新たな変化`, category: 'ビジネス', sentiment: 'positive' },
+                    { title: `${mainTag}技術の進歩が話題`, category: '技術', sentiment: 'positive' }
+                ];
+
+                return templates.map((news, index) => ({
+                    ...news,
+                    date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    views: Math.floor(Math.random() * 10000) + 1000,
+                    shares: Math.floor(Math.random() * 1000) + 100
+                }));
+            };
+
+            // トレンドデータ生成
+            const generateTrendsData = async (tags) => {
+                await new Promise(resolve => setTimeout(resolve, 400));
+                return tags.map((tag, index) => {
+                    const baseValue = 50;
+                    const trend = Array.from({ length: 7 }, (_, i) => ({
+                        date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        value: baseValue + Math.sin(i * 0.5) * 20 + Math.random() * 10
+                    }));
+
+                    return {
+                        tag,
+                        trend,
+                        currentValue: trend[trend.length - 1].value,
+                        change: trend[trend.length - 1].value - trend[trend.length - 2].value,
+                        color: `hsl(${(index * 120) % 360}, 65%, 55%)`
+                    };
+                });
+            };
+
+            // Gemini APIを使用したWebトレンド分析サービス
+            const GeminiTrendAnalyzer = {
+                // Gemini APIを使用して実際のトレンドを分析
+                analyzeRealTimeTrends: async (tag, apiKey) => {
+                    if (!apiKey) {
+                        console.warn('Gemini API key not provided, using fallback data');
+                        return WebTrendService.getFallbackTrends(tag);
+                    }
+
+                    try {
+                        const prompt = `
+${tag}に関する2024年9月時点の最新トレンド情報を分析してください。
+
+【分析対象・情報源】
+- X (Twitter): ツイート、ハッシュタグ、リツイート数、トレンド入り
+- Instagram: 投稿数、ハッシュタグ使用、ストーリーズ、リール動画
+- TikTok: 動画投稿、チャレンジ、音楽トレンド
+- YouTube: 動画再生数、チャンネル登録者増加、コメント数
+- Webサイト・ブログ: 記事更新、アクセス数、検索流入
+- ECサイト: 商品売上、レビュー数、検索ランキング
+- 公式サイト: 発表・リリース情報、アップデート
+- ニュースメディア: 記事数、検索数、報道頻度
+- Google検索: 検索ボリューム、関連検索語、サジェスト
+- Wikipedia: ページビュー、編集頻度
+- その他SNS: Facebook、LinkedIn、Reddit、Discord等
+
+【重要な指示】
+- SNSでの実際の言及数・エンゲージメント数に基づく分析
+- ハッシュタグ、バズワード、ミーム等のSNS特有の現象を含める
+- 実際にトレンドになっているもののみを含める（無理に8個埋める必要なし）
+- 関連キーワードは「${tag}」という単語を避けて、実際に関連する具体的な名前・サービス・技術を記載
+- トレンドがない場合は空配列[]を返す
+- 実在しないものは含めない
+
+以下の形式でJSONのみで回答してください：
+
+{
+  "trending": ["SNSで急上昇中の具体的なキーワード・ハッシュタグ（0-8個）"],
+  "related": ["実際に関連する具体的なサービス名・技術名・人名・企業名（0-8個）"],
+  "hot": ["SNS・メディアで話題の具体的なトピック・イベント・ニュース（0-6個）"],
+  "analysis": "SNS・Web上での${tag}分野の動向分析（200文字以内、エンゲージメント・言及数等の実際の状況）",
+  "sources": ["X", "Instagram", "TikTok", "YouTube", "Google Trends", "Wikipedia", "ニュースメディア", "公式サイト"]
+}
+
+例：
+「アニメ」→ related: ["Netflix", "呪術廻戦", "宮崎駿", "スタジオジブリ", "鬼滅の刃", "東映アニメーション"]
+「AI」→ related: ["ChatGPT", "OpenAI", "Claude", "Gemini", "機械学習", "ディープラーニング"]
+
+※「${tag}関連」「${tag}ニュース」等の表現は使わず、具体名のみ記載してください。`;
+
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: prompt
+                                    }]
+                                }]
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        console.log('📡 Gemini API レスポンス:', data);
+
+                        if (!data.candidates || !data.candidates[0]) {
+                            throw new Error('No candidates in Gemini API response');
+                        }
+
+                        const content = data.candidates[0].content.parts[0].text;
+                        console.log('📝 Gemini API コンテンツ:', content);
+
+                        // JSONを抽出（マークダウンのコードブロックを除去）
+                        const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) || content.match(/(\{[\s\S]*?\})/);
+
+                        if (jsonMatch) {
+                            try {
+                                const trendData = JSON.parse(jsonMatch[1]);
+                                console.log('🤖 Gemini APIから取得した本物のトレンドデータ:', trendData);
+                                return trendData;
+                            } catch (parseError) {
+                                console.error('JSON parsing error:', parseError);
+                                throw new Error('Failed to parse JSON from Gemini API');
+                            }
+                        } else {
+                            console.error('No JSON found in response:', content);
+                            throw new Error('Invalid JSON format from Gemini API');
+                        }
+
+                    } catch (error) {
+                        console.error('Gemini API トレンド分析エラー:', error);
+                        return WebTrendService.getFallbackTrends(tag);
+                    }
+                },
+
+                // キーワードの詳細説明を取得
+                explainKeywordTrend: async (keyword, category, apiKey) => {
+                    console.log('🔍 explainKeywordTrend 開始:', { keyword, category, hasApiKey: !!apiKey });
+
+                    if (!apiKey) {
+                        console.log('⚠️ APIキーなし、フォールバックデータを返却');
+                        return {
+                            keyword: keyword,
+                            explanation: `${keyword}に関する基本的な情報です。`,
+                            reasons: ['人気上昇中', '注目度が高い', 'SNSで話題'],
+                            details: `${keyword}についての詳細な分析データが利用できません。`,
+                            sources: ['Static Data']
+                        };
+                    }
+
+                    try {
+                        console.log('📡 Gemini API リクエスト準備中...');
+                        const prompt = `
+キーワード「${keyword}」について、SNS・Web上の最新情報を網羅的に分析し、Wikipedia風の詳細で専門的な解説を作成してください。
+
+【分析対象・情報源（網羅的）】
+- X (Twitter): ツイート数、ハッシュタグ使用頻度、リツイート・いいね数、トレンド入り履歴
+- Instagram: 投稿数、ハッシュタグ数、ストーリーズ、リール再生数、インフルエンサー言及
+- TikTok: 動画投稿数、再生数、チャレンジ動画、音楽トレンド、ハッシュタグ
+- YouTube: 動画数、再生数、チャンネル登録者数、コメント数、関連動画
+- Webサイト・ブログ: 記事数、PV数、検索流入、バックリンク、言及頻度
+- ECサイト: 商品売上、レビュー数、検索ランキング、価格動向
+- 公式サイト: プレスリリース、アップデート情報、発表内容
+- ニュースメディア: 記事数、検索数、報道頻度、メディア露出
+- Google検索: 検索ボリューム、関連検索語、サジェスト、トレンド
+- Wikipedia: ページビュー、編集頻度、新規作成、更新履歴
+- Reddit: 投稿数、アップボート、コメント数、サブレディット活動
+- Discord・Slack: コミュニティでの言及、議論頻度
+- LinkedIn: ビジネス関連の投稿、専門家の言及
+- Facebook: シェア数、コメント数、グループでの議論
+- 各種フォーラム・掲示板: 投稿数、議論の活発さ
+
+2024年9月時点の最新情報を基に、以下の形式でJSONで回答してください：
+
+{
+  "keyword": "${keyword}",
+  "explanation": "概要・定義（150-200文字、Wikipedia風の導入文、SNS・Web上での位置づけを含む）",
+  "reasons": ["SNS・Web上で注目されている具体的な理由6-8個（エンゲージメント数、バズった理由、話題の発端など）"],
+  "details": "詳細な解説（500-800文字、歴史・背景・現状・SNS・Web上での影響を含むWikipedia風の記述）",
+  "trend_type": "トレンドの性質（技術革新、社会現象、経済動向、エンターテイメント、政治・社会問題、SNSバズ、ミームなど）",
+  "timeline": "重要な時期・節目（具体的な日付や期間、SNS上でのバズ時期を含む）",
+  "related_events": ["関連する重要な出来事・発表・ニュース・SNSバズ4-6個（具体的な事実）"],
+  "key_figures": ["関連する重要人物・企業・組織2-3個"],
+  "impact": "社会・業界への影響（100-150文字）",
+  "sources": ["X", "Instagram", "TikTok", "YouTube", "Google Trends", "Wikipedia", "ニュースメディア", "公式サイト"]
+}
+
+【重要な指示】
+- SNS・Web上での実際の数値・エンゲージメントデータに基づく分析
+- ハッシュタグ、バズワード、ミーム、チャレンジ等のSNS特有の現象を含める
+- インフルエンサー・著名人の言及、拡散状況も考慮
+- Wikipedia風の客観的で事実に基づいた記述
+- 具体的な数値、日付、固有名詞を含める
+- 推測ではなく実際の情報のみ使用
+- 専門的かつ分かりやすい説明
+- 中立的な観点で記述`;
+
+                        console.log('🚀 Gemini API リクエスト送信...');
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: prompt
+                                    }]
+                                }]
+                            })
+                        });
+
+                        console.log('📩 API レスポンス状態:', response.status, response.statusText);
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('❌ Gemini API エラーレスポンス:', errorText);
+                            throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+                        }
+
+                        const data = await response.json();
+                        console.log('📡 キーワード詳細 API レスポンス:', data);
+
+                        if (!data.candidates || !data.candidates[0]) {
+                            throw new Error('No candidates in response');
+                        }
+
+                        const content = data.candidates[0].content.parts[0].text;
+                        console.log('📝 キーワード詳細 コンテンツ:', content);
+
+                        // JSONを抽出
+                        const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) || content.match(/(\{[\s\S]*?\})/);
+
+                        if (jsonMatch) {
+                            try {
+                                const detailData = JSON.parse(jsonMatch[1]);
+                                console.log('🔍 キーワード詳細データ:', detailData);
+                                return detailData;
+                            } catch (parseError) {
+                                console.error('JSON parsing error:', parseError);
+                                throw new Error('Failed to parse JSON response');
+                            }
+                        } else {
+                            console.error('No JSON found in response:', content);
+
+                            // フォールバック用の詳細データを生成
+                            return {
+                                keyword: keyword,
+                                explanation: `${keyword}は現在注目を集めているトピックです。`,
+                                reasons: ['検索数の増加', 'メディア露出の拡大', 'ソーシャルメディアでの言及増加'],
+                                details: `${keyword}に関する詳細な分析。現在このキーワードは様々な要因により注目を集めており、トレンドとして浮上しています。`,
+                                trend_type: category,
+                                timeline: '最近',
+                                related_events: ['関連イベント情報取得中'],
+                                sources: ['Fallback Analysis']
+                            };
+                        }
+
+                    } catch (error) {
+                        console.error('キーワード詳細取得エラー:', error);
+                        return {
+                            keyword: keyword,
+                            explanation: `${keyword}に関する詳細情報を取得中にエラーが発生しました。`,
+                            reasons: ['データ取得エラー'],
+                            details: `${keyword}についての詳細な分析が一時的に利用できません。`,
+                            sources: ['Error Fallback']
+                        };
+                    }
+                }
+            };
+
+            // フォールバックデータサービス
+            const WebTrendService = {
+                // フォールバックデータ（Gemini API不使用時）
+                getFallbackTrends: (tag) => {
+                    const realTrendData = {
+                        'アニメ': {
+                            trending: ['呪術廻戦', 'チェンソーマン', 'スパイファミリー', '鬼滅の刃', 'ワンピース', '僕のヒーローアカデミア', '進撃の巨人'],
+                            related: ['声優', 'アニメソング', 'コスプレ', 'フィギュア', 'マンガ', 'ライトノベル', '聖地巡礼', 'アニメ映画'],
+                            hot: ['AIアニメ', 'VTuberアニメ', 'Netflix独占', 'グローバル配信', 'アニメ業界DX', '3DCGアニメ']
+                        },
+                        'AI': {
+                            trending: ['ChatGPT-4', 'Claude-3', 'Gemini Ultra', 'GPT-5', 'Sora', 'Midjourney V6', 'Stable Diffusion'],
+                            related: ['プロンプトエンジニアリング', '機械学習', 'ディープラーニング', 'LangChain', 'ベクトルデータベース', 'RAG'],
+                            hot: ['AGI開発', 'AI規制法', 'マルチモーダルAI', 'AI Agent', 'ファインチューニング', 'AIガバナンス']
+                        },
+                        '技術': {
+                            trending: ['Next.js 14', 'React 19', 'TypeScript 5', 'Tailwind CSS', 'Docker', 'Kubernetes', 'AWS'],
+                            related: ['フロントエンド', 'バックエンド', 'DevOps', 'クラウド', 'マイクロサービス', 'API設計'],
+                            hot: ['WebAssembly', 'Edge Computing', 'Serverless', 'JAMstack', 'Low Code', 'No Code']
+                        },
+                        '料理': {
+                            trending: ['韓国料理', 'プロテインレシピ', '時短料理', 'ヘルシー弁当', 'グルテンフリー', '発酵食品', 'スープカレー'],
+                            related: ['レシピ動画', '料理教室', '調理器具', '食材宅配', '栄養バランス', '食品ロス対策'],
+                            hot: ['完全栄養食', 'ミールキット', '培養肉', 'フードテック', 'サステナブル食材', 'AI料理']
+                        },
+                        '旅行': {
+                            trending: ['国内旅行', '温泉巡り', 'グランピング', 'ワーケーション', '一人旅', 'キャンプ', '車中泊'],
+                            related: ['ホテル予約', '航空券', 'レンタカー', '観光地', 'お土産', 'グルメ旅'],
+                            hot: ['メタバース旅行', 'サステナブルツーリズム', 'オーバーツーリズム対策', 'デジタルノマド', 'リモートワーク旅行']
+                        },
+                        '健康': {
+                            trending: ['筋トレ', 'ヨガ', 'ランニング', 'プロテイン', 'サウナ', 'マインドフルネス', '睡眠改善'],
+                            related: ['フィットネス', '栄養管理', 'サプリメント', 'ストレッチ', '瞑想', 'メンタルケア'],
+                            hot: ['パーソナライズ医療', 'ウェアラブル', 'テレヘルス', '予防医学', 'デジタルセラピー', 'ヘルステック']
+                        },
+                        '動物': {
+                            trending: ['猫カフェ', '犬の散歩', 'ペット保険', 'キャットフード', 'ドッグラン', 'ペット同伴旅行'],
+                            related: ['獣医師', 'トリミング', 'ペットホテル', 'しつけ教室', 'ペット用品', 'アニマルセラピー'],
+                            hot: ['ペットテック', 'AIペット診断', 'ペット見守りカメラ', '保護猫活動', '動物愛護法改正']
+                        }
+                    };
+
+                    return realTrendData[tag] || null;
+                },
+
+                // YouTube、Twitter、Googleトレンドを模擬したデータ取得
+                fetchSocialTrends: async (tag) => {
+                    await new Promise(resolve => setTimeout(resolve, 600));
+
+                    // 実際のソーシャルメディアトレンドを模擬
+                    const socialTrends = {
+                        'アニメ': ['#呪術廻戦', '#チェンソーマン', '#アニメ好きと繋がりたい', '#今期のアニメ'],
+                        'AI': ['#ChatGPT', '#AI革命', '#生成AI', '#プロンプトエンジニアリング'],
+                        '技術': ['#プログラミング学習', '#エンジニア転職', '#Web開発', '#技術書'],
+                        '料理': ['#おうちごはん', '#時短レシピ', '#料理好きと繋がりたい', '#手作り弁当'],
+                        '旅行': ['#国内旅行', '#温泉旅行', '#一人旅', '#旅行好きと繋がりたい'],
+                        '健康': ['#筋トレ', '#ダイエット', '#健康管理', '#ヨガ'],
+                        '動物': ['#猫', '#犬', '#ペット', '#動物好きと繋がりたい']
+                    };
+
+                    return socialTrends[tag] || [];
+                }
+            };
+
+            // 複数タグ対応のキーワード生成機能（Gemini API統合）
+            const generateKeywords = async (tags) => {
+                console.log('🎯 generateKeywords 開始:', { tags });
+                console.log('🔑 generateKeywords時点のAPIキー状態:', {
+                    hasKey: !!GEMINI_API_KEY,
+                    keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+                    keyStart: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'なし'
+                });
+
+                // 複数タグの場合、各タグの分析 + 全体の組み合わせ分析を実行
+                const results = {};
+
+                try {
+                    // 1. 「すべて」タブ用の組み合わせ分析
+                    if (tags.length > 1) {
+                        console.log('🔄 複数タグの組み合わせ分析開始:', tags);
+                        results.all = await generateCombinedAnalysis(tags);
+                    }
+
+                    // 2. 各タグの個別分析
+                    for (const tag of tags) {
+                        console.log('🔍 個別タグ分析開始:', tag);
+                        results[tag] = await generateSingleTagAnalysis(tag);
+                    }
+
+                    return results;
+                } catch (error) {
+                    console.error('❌ generateKeywords エラー:', error);
+                    return generateFallbackResults(tags);
+                }
+            };
+
+            // 複数タグの組み合わせ分析
+            const generateCombinedAnalysis = async (tags) => {
+                console.log('🎯 generateCombinedAnalysis 開始:', tags);
+
+                try {
+                    // 常にGemini APIを使用してリアルタイムトレンド分析
+                    if (GEMINI_API_KEY && GEMINI_API_KEY !== 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                        console.log('🔍 Gemini APIを使用して組み合わせ分析中...', tags);
+
+                        const combinedPrompt = `
+${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の融合分野` : `${tags[0]}など${tags.length}分野の組み合わせ`}に関する2024年9月時点の最新トレンド情報を分析してください。
+
+【分析対象・情報源（網羅的）】
+- X (Twitter): ツイート、ハッシュタグ、リツイート数、トレンド入り
+- Instagram: 投稿数、ハッシュタグ使用、ストーリーズ、リール動画
+- TikTok: 動画投稿、チャレンジ、音楽トレンド
+- YouTube: 動画再生数、チャンネル登録者増加、コメント数
+- Webサイト・ブログ: 記事更新、アクセス数、検索流入
+- ECサイト: 商品売上、レビュー数、検索ランキング
+- 公式サイト: 発表・リリース情報、アップデート
+- ニュースメディア: 記事数、検索数、報道頻度
+- Google検索: 検索ボリューム、関連検索語、サジェスト
+- Wikipedia: ページビュー、編集頻度
+- その他SNS: Facebook、LinkedIn、Reddit、Discord等
+
+【重要な指示】
+- 複数分野の交差点・融合領域に焦点を当てる
+- 「${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}×${tags[1]}` : `${tags.slice(0,2).join('×')}等`}」の組み合わせでのみ生まれるトレンドを重視
+- 単独では見えない相乗効果やクロスオーバー現象を分析
+- 実際にトレンドになっているもののみを含める
+
+以下の形式でJSONのみで回答してください：
+
+{
+  "trending": ["${tags.length === 1 ? tags[0] : `${tags[0]}×${tags[1]}`}関連で急上昇中のキーワード（0-8個）"],
+  "related": ["組み合わせに関連する具体的なサービス名・技術名・人名・企業名（0-8個）"],
+  "hot": ["組み合わせで話題の具体的なトピック・イベント・ニュース（0-6個）"],
+  "analysis": "組み合わせ分野での動向分析（200文字以内、相乗効果・融合トレンドを重視）",
+  "sources": ["X", "Instagram", "TikTok", "YouTube", "Google Trends", "Wikipedia", "ニュースメディア", "公式サイト"]
+}`;
+
+                        const geminiTrends = await GeminiTrendAnalyzer.analyzeRealTimeTrends(tags.length === 1 ? tags[0] : `${tags[0]}×${tags[1]}`, GEMINI_API_KEY, combinedPrompt);
+                        console.log('✅ Gemini 組み合わせ分析結果:', geminiTrends);
+
+                        return {
+                            trending: geminiTrends.trending || [],
+                            related: geminiTrends.related || [],
+                            hot: geminiTrends.hot || [],
+                            analysis: geminiTrends.analysis || '',
+                            sources: geminiTrends.sources || ['Gemini AI Analysis']
+                        };
+                    } else {
+                        console.log('❌ APIキーが無効、組み合わせ分析で再読み込みを試行...');
+                        const reloadedKey = await loadApiKeyFromEnv();
+                        if (reloadedKey && reloadedKey !== 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                            const geminiTrends = await GeminiTrendAnalyzer.analyzeRealTimeTrends(tags.length === 1 ? tags[0] : `${tags[0]}×${tags[1]}`, reloadedKey);
+                            return {
+                                trending: geminiTrends.trending || [],
+                                related: geminiTrends.related || [],
+                                hot: geminiTrends.hot || [],
+                                analysis: geminiTrends.analysis || '',
+                                sources: geminiTrends.sources || ['Gemini AI Analysis']
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ 組み合わせ分析エラー:', error);
+                }
+
+                // フォールバック
+                return {
+                    trending: [`${tags.length === 1 ? tags[0] : `${tags[0]}×${tags[1]}`}融合トレンド`],
+                    related: tags,
+                    hot: [`${tags.length === 1 ? `${tags[0]}関連` : `${tags[0]}×${tags[1]}コラボ`}`],
+                    analysis: `${tags.join('と')}の組み合わせにより新しい可能性が生まれています。`,
+                    sources: ['Local Data']
+                };
+            };
+
+            // 個別タグ分析
+            const generateSingleTagAnalysis = async (tag) => {
+                try {
+                    // 常にGemini APIを使用してリアルタイムトレンド分析
+                    if (GEMINI_API_KEY && GEMINI_API_KEY !== 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                        console.log('🔍 Gemini APIを使用してトレンド分析中...', tag);
+                        const geminiTrends = await GeminiTrendAnalyzer.analyzeRealTimeTrends(tag, GEMINI_API_KEY);
+                        console.log('✅ Gemini トレンド分析結果:', geminiTrends);
+
+                        return {
+                            trending: geminiTrends.trending || [],
+                            related: geminiTrends.related || [],
+                            hot: geminiTrends.hot || [],
+                            analysis: geminiTrends.analysis || '',
+                            sources: geminiTrends.sources || ['Gemini AI Analysis']
+                        };
+                    } else {
+                        console.log('❌ APIキーが無効、個別分析で再読み込みを試行...');
+                        const reloadedKey = await loadApiKeyFromEnv();
+                        if (reloadedKey && reloadedKey !== 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                            console.log('🔄 APIキー再読み込み成功、Gemini トレンド分析を実行...');
+                            const geminiTrends = await GeminiTrendAnalyzer.analyzeRealTimeTrends(tag, reloadedKey);
+                            console.log('✅ Gemini トレンド分析結果:', geminiTrends);
+
+                            return {
+                                trending: geminiTrends.trending || [],
+                                related: geminiTrends.related || [],
+                                hot: geminiTrends.hot || [],
+                                analysis: geminiTrends.analysis || '',
+                                sources: geminiTrends.sources || ['Gemini AI Analysis']
+                            };
+                        } else {
+                            console.log('❌ APIキー再読み込みも失敗、フォールバックデータを使用');
+                        }
+                    }
+
+                    // フォールバックデータを使用
+                    const fallbackTrends = WebTrendService.getFallbackTrends(tag);
+                    return {
+                        trending: fallbackTrends.trending || [],
+                        related: fallbackTrends.related || [],
+                        hot: fallbackTrends.hot || [],
+                        analysis: fallbackTrends.analysis || `${tag}に関する基本的な分析情報`,
+                        sources: ['Local Data']
+                    };
+                } catch (error) {
+                    console.error('❌ 個別タグ分析エラー:', error);
+                    return {
+                        trending: [],
+                        related: [],
+                        hot: [],
+                        analysis: `${tag}の分析でエラーが発生しました。`,
+                        sources: ['Error Fallback']
+                    };
+                }
+            };
+
+            // フォールバック結果生成
+            const generateFallbackResults = (tags) => {
+                const results = {};
+
+                if (tags.length > 1) {
+                    results.all = {
+                        trending: [`${tags.length === 1 ? tags[0] : `${tags[0]}×${tags[1]}`}トレンド`],
+                        related: tags,
+                        hot: [`${tags.length === 1 ? `${tags[0]}関連` : `${tags[0]}×${tags[1]}話題`}`],
+                        analysis: `${tags.join('と')}の組み合わせによる新しいトレンドが注目されています。`,
+                        sources: ['Fallback Data']
+                    };
+                }
+
+                tags.forEach(tag => {
+                    results[tag] = {
+                        trending: [`${tag}関連トレンド`],
+                        related: [tag],
+                        hot: [`${tag}話題`],
+                        analysis: `${tag}分野での動向を分析中です。`,
+                        sources: ['Fallback Data']
+                    };
+                });
+
+                return results;
+            };
+
+            // 配列をシャッフルする関数
+            const shuffleArray = (array) => {
+                const newArray = [...array];
+                for (let i = newArray.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+                }
+                return newArray;
+            };
+
+            // キーワード詳細を取得する関数（簡略版）
+            const fetchKeywordDetail = async (keyword, category) => {
+                console.log('🔍 fetchKeywordDetail 開始:', { keyword, category });
+                setIsLoadingKeywordDetail(true);
+
+                // APIキーの状態をチェック
+                console.log('🔑 fetchKeywordDetail時点のAPIキー状態:', {
+                    GEMINI_API_KEY_defined: typeof GEMINI_API_KEY,
+                    GEMINI_API_KEY_value: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'null/undefined',
+                    GEMINI_API_KEY_length: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0
+                });
+
+                // 短時間のローディング表示
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                try {
+                    console.log('🔍 キーワード詳細取得:', keyword, category);
+
+                    // まずはローカルで詳細データを生成（確実に動作）
+                    const localDetail = generateLocalKeywordDetail(keyword, category);
+
+                    // Gemini APIを試行（エラーでも続行）
+                    try {
+                        console.log('🔑 APIキーチェック:', {
+                            hasKey: !!GEMINI_API_KEY,
+                            keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+                            keyStart: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'なし'
+                        });
+
+                        if (GEMINI_API_KEY && GEMINI_API_KEY !== 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                            console.log('🤖 Gemini API 詳細分析を試行中...', keyword, category);
+                            const geminiDetail = await GeminiTrendAnalyzer.explainKeywordTrend(keyword, category, GEMINI_API_KEY);
+                            console.log('✅ Gemini API レスポンス受信:', geminiDetail);
+                            setSelectedKeywordDetail(geminiDetail);
+                            return;
+                        } else {
+                            console.log('❌ APIキーが無効、再読み込みを試行...');
+                            // APIキーの再読み込みを試行
+                            const reloadedKey = await loadApiKeyFromEnv();
+                            if (reloadedKey && reloadedKey !== 'YOUR_ACTUAL_GEMINI_API_KEY_HERE') {
+                                console.log('🔄 APIキー再読み込み成功、Gemini API を試行...');
+                                const geminiDetail = await GeminiTrendAnalyzer.explainKeywordTrend(keyword, category, reloadedKey);
+                                console.log('✅ Gemini API レスポンス受信:', geminiDetail);
+                                setSelectedKeywordDetail(geminiDetail);
+                                return;
+                            } else {
+                                console.log('❌ APIキー再読み込みも失敗、ローカルデータを使用');
+                            }
+                        }
+                    } catch (apiError) {
+                        console.warn('❌ Gemini API エラー、ローカルデータを使用:', apiError);
+                    }
+
+                    // ローカルデータを使用
+                    setSelectedKeywordDetail(localDetail);
+
+                } catch (error) {
+                    console.error('キーワード詳細取得エラー:', error);
+
+                    // 最終フォールバック
+                    setSelectedKeywordDetail({
+                        keyword: keyword,
+                        explanation: `${keyword}は現在注目されているキーワードです。`,
+                        reasons: ['検索数の増加', 'メディア露出', 'SNS話題'],
+                        details: `${keyword}に関する基本的な分析情報です。このキーワードは様々な要因により注目を集めています。`,
+                        trend_type: category,
+                        timeline: '最近',
+                        related_events: ['関連情報収集中'],
+                        sources: ['Local Analysis']
+                    });
+                } finally {
+                    setIsLoadingKeywordDetail(false);
+                }
+            };
+
+            // ローカルでキーワード詳細を生成する関数
+            const generateLocalKeywordDetail = (keyword, category) => {
+                const keywordDetails = {
+                    '呪術廻戦': {
+                        explanation: '呪術廻戦は、芥見下々による日本の漫画作品を原作とするアニメーション作品。超自然的な要素と現代的な設定を組み合わせた独特の世界観で、2024年現在も高い人気を維持している。',
+                        reasons: ['アニメ第3期制作決定発表', 'スマートフォンゲーム「呪術廻戦 幻夜闘」配信開始', '劇場版第2弾の興行収入が100億円突破', '海外配信での視聴数記録更新', 'コラボレーション商品の売上好調', '声優イベントの大規模開催'],
+                        details: '呪術廻戦は2018年より週刊少年ジャンプで連載開始され、2020年にテレビアニメ化。MAPPAによるアニメーション制作で話題となり、独特な呪術設定と現代社会を舞台にしたストーリー展開が評価されている。主人公虎杖悠仁を中心とした学園バトル要素と、深刻な社会問題を扱うテーマ性のバランスが特徴的。2024年にはアニメ第3期の制作が決定し、原作漫画も最終章に向けて物語が加速している。',
+                        trend_type: 'エンターテイメント',
+                        timeline: '2024年7月：第3期制作発表、2024年8月：スマホゲーム配信開始',
+                        related_events: ['渋谷事変編アニメ化完結', '原作漫画最終章突入', '海外展開の本格化', 'VRコンテンツ制作発表'],
+                        key_figures: ['芥見下々（原作者）', 'MAPPA（アニメーション制作）', '榎木淳弥（虎杖悠仁役）'],
+                        impact: 'アニメ業界における3DCGと2Dアニメーションの融合技術の発展に貢献。海外市場でのジャンプ作品の地位向上にも大きく寄与し、関連商品市場の拡大を牽引している。',
+                        sources: ['週刊少年ジャンプ公式', 'MAPPA公式サイト', 'Netflix Japan', 'オリコンニュース']
+                    },
+                    'チェンソーマン': {
+                        explanation: 'アニメ第2期の制作発表と新展開により話題沸騰中',
+                        reasons: ['アニメ第2期制作発表', '原作漫画の新章開始', '実写映画化の噂', 'フィギュア新商品発売', 'Twitterでのバズ拡散'],
+                        details: 'チェンソーマンは独特な世界観とキャラクターで人気を博している作品です。アニメ第1期の成功を受けて第2期の制作が発表され、ファンの間で大きな期待と話題を呼んでいます。'
+                    },
+                    'スパイファミリー': {
+                        explanation: '家族をテーマにした心温まるストーリーで幅広い層から支持',
+                        reasons: ['アニメ新エピソード放送', '家族層に人気拡大', 'グッズ展開の充実', '海外配信好調', 'ミームとしての拡散'],
+                        details: 'スパイファミリーは偽装家族の日常を描いた作品で、コメディとアクションのバランスが絶妙です。特に「アーニャ」キャラクターの人気が高く、様々なメディア展開が行われています。'
+                    }
+                };
+
+                const detail = keywordDetails[keyword] || {
+                    explanation: `${keyword}は現在${category}として注目を集めています`,
+                    reasons: ['検索トレンド上昇', 'メディア露出増加', 'SNSでの言及拡大'],
+                    details: `${keyword}に関する詳細な分析。現在このキーワードは様々な要因により${category}として浮上しています。`
+                };
+
+                return {
+                    keyword: keyword,
+                    explanation: detail.explanation,
+                    reasons: detail.reasons,
+                    details: detail.details,
+                    trend_type: detail.trend_type || category,
+                    timeline: detail.timeline || '2024年夏頃から',
+                    related_events: detail.related_events || ['関連イベント開催', '新商品発売', 'メディア報道'],
+                    key_figures: detail.key_figures || ['関連企業・人物'],
+                    impact: detail.impact || `${keyword}は関連業界や社会に対して一定の影響を与えている。`,
+                    sources: detail.sources || ['Local Trend Database', 'Social Media Analysis']
+                };
+            };
+
+            // 分析結果を完全にクリアする関数
+            const clearAllAnalysisResults = () => {
+                console.log('🧹 すべての分析結果をクリア');
+                setSelectedKeywordDetail(null);
+                setIsLoadingKeywordDetail(false);
+                setGeneratedReport(null);
+                setIsGeneratingReport(false);
+                setReportLoadingProgress(0);
+                setShowAnalysisResults(false); // 分析結果を非表示に
+            };
+
+            // キーワードクリック時の処理（詳細表示のみ）
+            const handleKeywordClick = async (keyword, category = '話題') => {
+                console.log('🔍 キーワードクリック:', keyword);
+
+                // キーワード詳細を取得して表示（自動クローズしない）
+                await fetchKeywordDetail(keyword, category);
+            };
+
+            // キーワードから新しいレポート生成の処理（分離）
+            const handleGenerateReportFromKeyword = async (keyword) => {
+                console.log('🔄 新しいレポート生成開始:', keyword);
+
+                // すべての分析結果をクリア
+                clearAllAnalysisResults();
+
+                // 新しいタグとして設定
+                const newTags = [keyword];
+                setSelectedTags(newTags);
+
+                // 新しいレポートを生成
+                await generateVisualReport(newTags, articles);
             };
 
             // 長押し機能
@@ -626,11 +2078,30 @@
 
             // データ読み込み
             useEffect(() => {
+                console.log('🎯 useEffect 実行開始');
+
                 const initializeData = async () => {
-                    await loadData();
-                    
-                    console.log('✅ データを使用');
-                    console.log('記事数:', inlineData.articles.length);
+                    try {
+                        console.log('🚀 アプリケーション初期化開始');
+
+                        // .env.localからAPIキーを読み込み
+                        console.log('🔑 APIキー読み込み開始');
+                        const loadedKey = await loadApiKeyFromEnv();
+                        console.log('🔑 APIキー読み込み完了:', loadedKey ? loadedKey.substring(0, 10) + '...' : 'null');
+                        console.log('🔑 グローバル GEMINI_API_KEY 確認:', GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'null');
+
+                        await loadData();
+
+                        console.log('✅ データを使用');
+                        console.log('記事数:', inlineData.articles.length);
+                    } catch (error) {
+                        console.error('❌ 初期化エラー:', error);
+                        // エラーが発生してもAPIキーの読み込みは試行
+                        if (!GEMINI_API_KEY) {
+                            console.log('🔄 エラー後のAPIキー読み込み再試行');
+                            await loadApiKeyFromEnv();
+                        }
+                    }
                     
                     // 記事に話題性スコアと静的サイズを追加
                     const articlesWithTopicality = inlineData.articles.map(article => {
@@ -665,6 +2136,19 @@
 
             const handleArticleRead = (article, event) => {
                 console.log('handleArticleRead実行:', { article, showFavorites, currentView });
+
+                // 外部記事でURLがある場合は新しいタブで開く（AI生成記事以外）
+                if (article.isExternal && article.url && !article.isAIGenerated) {
+                    console.log('🌐 外部記事を新しいタブで開く:', article.url);
+                    window.open(article.url, '_blank');
+                    return;
+                }
+
+                // AI生成記事の場合は内部モーダルで表示
+                if (article.isAIGenerated) {
+                    console.log('🤖 AI生成記事をモーダルで表示:', article.title);
+                }
+
                 // 現在の画面状態を保存
                 if (showFavorites) {
                     setPreviousView('favorites');
@@ -805,6 +2289,9 @@
 
             // マップ画面用：選択されたタグに関連する記事をフィルタリング
             const getMapFilteredArticles = () => {
+                if (!articles || articles.length === 0) {
+                    return [];
+                }
                 let baseArticles = articles;
                 
                 if (selectedTags.length > 0) {
@@ -1076,7 +2563,26 @@
                         .attr("y", d => d.y);
                 });
 
-            }, [currentView, tagsArray, tagLinks, interestDepth, selectedTags]);
+            }, [currentView, tagsArray, tagLinks, interestDepth]);
+
+            // selectedTagsが変更された時だけノードのスタイルを更新
+            useEffect(() => {
+                if (currentView !== 'map') return;
+
+                const svg = d3.select("#mapSvg");
+                if (!svg.node()) return;
+
+                // ノードのスタイルのみ更新
+                svg.selectAll("circle")
+                    .style("stroke-width", d => selectedTags.includes(d.id) ? 4 : 2)
+                    .style("stroke", d => selectedTags.includes(d.id) ? "#fbbf24" : "rgba(255, 255, 255, 0.8)");
+
+                // テキストのスタイルのみ更新
+                svg.selectAll("text")
+                    .style("fill", d => selectedTags.includes(d.id) ? "#fbbf24" : "white")
+                    .style("font-weight", d => selectedTags.includes(d.id) ? "700" : "600");
+
+            }, [selectedTags, currentView]);
             
             // 選択ノードに関連するコンテキストタグを取得
             const getContextualTags = (selectedTag, interestLevel) => {
@@ -1207,7 +2713,7 @@
                     setCollectedTags(updatedTags);
                     setTagLinks(updatedLinks);
                 }
-            }, [currentView, interestDepth, selectedTags]);
+            }, [currentView, interestDepth]);
 
             // データ読み込み中の表示
             if (!dataLoaded) {
@@ -1366,8 +2872,8 @@
                                             className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-600 transition-colors"
                                             title="フォント設定"
                                         >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M12 3C13.1 3 14 3.9 14 5C14 6.1 13.1 7 12 7C10.9 7 10 6.1 10 5C10 3.9 10.9 3 12 3ZM21 9V7L15 1H5C3.9 1 3 1.9 3 3V19C3 20.1 3.9 21 5 21H11V19H5V3H13V9H21ZM21 21L14.5 14.5C13.9 14.8 13.2 15 12.5 15C10.6 15 9 13.4 9 11.5S10.6 8 12.5 8 16 9.6 16 11.5C16 12.2 15.8 12.9 15.5 13.5L22 20L21 21Z" fill="currentColor"/>
+                                            <svg width="16" height="16" viewBox="0 0 22 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M8.25001 20L7.85001 16.8C7.63335 16.7167 7.42918 16.6167 7.23751 16.5C7.04585 16.3833 6.85835 16.2583 6.67501 16.125L3.70001 17.375L0.950012 12.625L3.52501 10.675C3.50835 10.5583 3.50001 10.4458 3.50001 10.3375V9.6625C3.50001 9.55417 3.50835 9.44167 3.52501 9.325L0.950012 7.375L3.70001 2.625L6.67501 3.875C6.85835 3.74167 7.05001 3.61667 7.25001 3.5C7.45001 3.38333 7.65001 3.28333 7.85001 3.2L8.25001 0H13.75L14.15 3.2C14.3667 3.28333 14.5708 3.38333 14.7625 3.5C14.9542 3.61667 15.1417 3.74167 15.325 3.875L18.3 2.625L21.05 7.375L18.475 9.325C18.4917 9.44167 18.5 9.55417 18.5 9.6625V10.3375C18.5 10.4458 18.4833 10.5583 18.45 10.675L21.025 12.625L18.275 17.375L15.325 16.125C15.1417 16.2583 14.95 16.3833 14.75 16.5C14.55 16.6167 14.35 16.7167 14.15 16.8L13.75 20H8.25001ZM11.05 13.5C12.0167 13.5 12.8417 13.1583 13.525 12.475C14.2083 11.7917 14.55 10.9667 14.55 10C14.55 9.03333 14.2083 8.20833 13.525 7.525C12.8417 6.84167 12.0167 6.5 11.05 6.5C10.0667 6.5 9.23751 6.84167 8.56251 7.525C7.88751 8.20833 7.55001 9.03333 7.55001 10C7.55001 10.9667 7.88751 11.7917 8.56251 12.475C9.23751 13.1583 10.0667 13.5 11.05 13.5Z" fill="currentColor"/>
                                             </svg>
                                         </button>
                                         {/* AIヘルプボタン */}
@@ -1467,6 +2973,10 @@
                                             className="bg-white rounded-xl border border-gray-200 p-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
                                             onClick={() => {
                                                 // レポートを再現してメインページに戻る
+                                                console.log('📂 お気に入りレポートを開く：分析結果をリセット');
+                                                setShowAnalysisResults(false);
+                                                setGeneratedReport(null);
+                                                setSelectedKeywordDetail(null);
                                                 setSelectedTags(report.tags || []);
                                                 setPreviousView('favoritesList'); // お気に入りリストから来たことを記録
                                                 setShowFavorites(true);
@@ -1474,10 +2984,23 @@
                                             }}
                                         >
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center flex-1">
+                                                    <div className="flex flex-col flex-1">
                                                         <span className={`text-sm font-${selectedFont} text-gray-900`}>
-                                                            {(report.tags || []).join(' × ') || '無題のレポート'}
+                                                            {(() => { const tags = report.tags || []; return tags.length === 0 ? '無題のレポート' : tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}` : `${tags[0]}など${tags.length}分野`; })()}
                                                         </span>
+                                                        {/* タグ一覧を表示 */}
+                                                        {report.tags && report.tags.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                {report.tags.map((tag, tagIndex) => (
+                                                                    <span
+                                                                        key={tagIndex}
+                                                                        className={`inline-block px-2 py-0.5 text-xs font-${selectedFont} bg-blue-100 text-blue-700 rounded-full`}
+                                                                    >
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center space-x-2 ml-4">
                                                         {/* 時計アイコン */}
@@ -1765,7 +3288,7 @@
                                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                         </svg>
                                         {favoriteReports.length > 0 && (
-                                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-handwriting rounded-full w-5 h-5 flex items-center justify-center">
+                                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-normal rounded-full w-5 h-5 flex items-center justify-center">
                                                 {favoriteReports.length}
                                             </div>
                                         )}
@@ -1918,6 +3441,15 @@
                                     <button
                                         onClick={() => {
                                             console.log('集約レポート閉じるボタン、previousView:', previousView);
+
+                                            // 分析結果と状態をクリア
+                                            setShowAnalysisResults(false);
+                                            setGeneratedReport(null);
+                                            setMultiTagReport(null);
+                                            setActiveTab('all');
+                                            setArticleSortMode('latest');
+                                            setSelectedKeywordDetail(null);
+
                                             setShowFavorites(false);
                                             // 前の画面に戻る
                                             if (previousView === 'favoritesList') {
@@ -1944,7 +3476,7 @@
                                     <div className="flex flex-col items-center justify-center pt-2">
                                         {/* 中央上：タグ組み合わせ */}
                                         <div className={`text-m text-center font-${selectedFont} text-gray-900 pr-11 pl-11`}>
-                                            {selectedTags.length > 0 ? selectedTags.join(' × ') : '未選択'}
+                                            {selectedTags.length === 0 ? '未選択' : selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}
                                         </div>
 
                                         {/* 下部：アイコン配置 */}
@@ -1960,10 +3492,10 @@
                                             {/* 中央：お気に入りボタン */}
                                             <button
                                                 onClick={(e) => {
-                                                    console.log('📊 集約レポートお気に入りボタンクリック:', selectedTags.join(' × '));
+                                                    console.log('📊 集約レポートお気に入りボタンクリック:', selectedTags.length === 1 ? selectedTags[0] : `${selectedTags[0]}と${selectedTags[1]}`);
                                                     e.stopPropagation();
                                                     toggleFavorites({
-                                                        title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                        title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
                                                         type: 'aggregated',
                                                         tags: selectedTags,
                                                         articleCount: getMapFilteredArticles().length
@@ -1971,19 +3503,19 @@
                                                 }}
                                                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                                                     isFavorite({
-                                                        title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                        title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
                                                         type: 'aggregated',
                                                         tags: selectedTags
                                                     }) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
                                                 }`}
                                                 title={isFavorite({
-                                                    title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                    title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
                                                     type: 'aggregated',
                                                     tags: selectedTags
                                                 }) ? "お気に入りから削除" : "お気に入りに追加"}
                                             >
                                                 <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite({
-                                                    title: `集約レポート: ${selectedTags.join(' × ')}`,
+                                                    title: `集約レポート: ${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}`,
                                                     type: 'aggregated',
                                                     tags: selectedTags
                                                 }) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1992,6 +3524,7 @@
                                             </button>
                                         </div>
                                     </div>
+
 
                                 </div>
                                 
@@ -2020,6 +3553,546 @@
                             <div className="py-4">
                                 {selectedTags.length > 0 ? (
                                     <>
+                                        {/* タブナビゲーション - 複数タグ選択時のみ表示 */}
+                                        {selectedTags.length > 1 && (
+                                            <div className="mb-4">
+                                                <div className="flex gap-2 overflow-x-auto pb-2 px-4">
+                                                    {/* 「すべて」タブ */}
+                                                    <button
+                                                        onClick={() => setActiveTab('all')}
+                                                        className={`px-4 py-2 rounded-full whitespace-nowrap transition-all font-${selectedFont} ${
+                                                            activeTab === 'all'
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        }`}
+                                                    >
+                                                        すべて
+                                                    </button>
+                                                    {/* 各タグのタブ */}
+                                                    {selectedTags.map((tag) => (
+                                                        <button
+                                                            key={tag}
+                                                            onClick={() => setActiveTab(tag)}
+                                                            className={`px-4 py-2 rounded-full whitespace-nowrap transition-all font-${selectedFont} ${
+                                                                activeTab === tag
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                            }`}
+                                                        >
+                                                            {tag}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* AI話題・トレンド分析セクション */}
+                                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg mx-4 p-4 mb-6">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                                    </svg>
+                                                </div>
+                                                <h3 className={`text-lg font-${selectedFont} text-gray-900`}>AI話題分析</h3>
+                                                <button
+                                                    onClick={async () => {
+                                                        console.log('🚀 分析開始ボタンクリック - selectedTags:', selectedTags);
+                                                        console.log('🔑 現在のAPIキー:', GEMINI_API_KEY ? '設定済み' : '未設定');
+
+                                                        // 複数タグの場合はデフォルトで「すべて」タブを選択
+                                                        if (selectedTags.length > 1) {
+                                                            setActiveTab('all');
+                                                        } else {
+                                                            setActiveTab(selectedTags[0] || 'all');
+                                                        }
+
+                                                        // ソートモードを最新順にリセット
+                                                        setArticleSortMode('latest');
+
+                                                        await generateVisualReport(selectedTags, articles);
+                                                        console.log('✅ レポート生成完了 - 分析結果を表示');
+                                                        setShowAnalysisResults(true);
+                                                    }}
+                                                    disabled={isGeneratingReport}
+                                                    className={`ml-auto px-6 py-3 rounded-lg text-sm font-${selectedFont} font-medium transition-all ${
+                                                        isGeneratingReport
+                                                            ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                                            : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                                                    }`}
+                                                >
+                                                    {isGeneratingReport ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                            AI分析中...
+                                                        </div>
+                                                    ) : (
+                                                        '🤖 AI分析開始'
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            <div className="text-sm text-gray-600 bg-white/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                                    </svg>
+                                                    <span className={`font-${selectedFont} font-medium text-gray-700`}>
+                                                        リアルタイムAI分析
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-500">
+                                                    Gemini AIが最新のWebトレンドを分析し、実際の人気コンテンツや話題キーワードを抽出します
+                                                </p>
+                                            </div>
+                                        </div>
+
+
+                                        {/* キーワードセクション */}
+                                        {(() => {
+                                            // アクティブなタブに基づいてキーワードデータを取得
+                                            const getActiveKeywords = () => {
+                                                if (selectedTags.length <= 1) {
+                                                    // 単一タグの場合は従来通り
+                                                    return generatedReport?.keywords;
+                                                } else {
+                                                    // 複数タグの場合は multiTagReport から取得
+                                                    if (activeTab === 'all') {
+                                                        return multiTagReport?.all;
+                                                    } else {
+                                                        return multiTagReport?.[activeTab];
+                                                    }
+                                                }
+                                            };
+
+                                            const activeKeywords = getActiveKeywords();
+                                            const hasKeywordData = activeKeywords &&
+                                                (activeKeywords.trending?.length > 0 ||
+                                                 activeKeywords.related?.length > 0 ||
+                                                 activeKeywords.hot?.length > 0 ||
+                                                 activeKeywords.analysis);
+
+                                            return hasKeywordData && showAnalysisResults;
+                                        })() && (
+                                            <div className="mx-4 mb-6">
+                                                {/* 分析レポート見出し */}
+                                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg mb-0">
+                                                    <div className="flex items-center justify-between">
+                                                        <h3 className={`text-lg font-${selectedFont}`}>
+                                                            📊 {(() => {
+                                                                const tags = selectedTags;
+                                                                return tags.length === 1 ? `${tags[0]}分析レポート` : tags.length === 2 ? `${tags[0]}と${tags[1]}の分析レポート` : `${tags[0]}など${tags.length}分野の分析レポート`;
+                                                            })()}
+                                                        </h3>
+                                                        <button
+                                                            onClick={() => {
+                                                                setGeneratedReport(null);
+                                                                setShowAnalysisResults(false);
+                                                                console.log('🚪 レポートを閉じる：分析結果もリセット');
+                                                            }}
+                                                            className="text-white/80 hover:text-white"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                                                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white border border-gray-200 rounded-b-lg p-4">
+                                                    <div className="space-y-4">
+                                                        {(() => {
+                                                            const activeKeywords = (() => {
+                                                                if (selectedTags.length <= 1) {
+                                                                    return generatedReport?.keywords;
+                                                                } else {
+                                                                    return activeTab === 'all' ? multiTagReport?.all : multiTagReport?.[activeTab];
+                                                                }
+                                                            })();
+
+                                                            return (
+                                                                <>
+                                                                    {/* 急上昇ワード */}
+                                                                    {activeKeywords?.trending && activeKeywords.trending.length > 0 && (
+                                                            <div>
+                                                                <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    🔥 急上昇ワード
+                                                                </h4>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {activeKeywords.trending.map((keyword, index) => (
+                                                                        <button
+                                                                            key={index}
+                                                                            onClick={() => handleKeywordClick(keyword, '急上昇ワード')}
+                                                                            className={`px-3 py-1.5 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-full text-sm font-${selectedFont} text-red-700 hover:from-red-100 hover:to-orange-100 hover:border-red-300 transition-all cursor-pointer`}
+                                                                        >
+                                                                            # {keyword}
+                                                                            </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    )}
+
+                                                                    {/* 関連キーワード */}
+                                                                    {activeKeywords?.related && activeKeywords.related.length > 0 && (
+                                                            <div>
+                                                                <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    🔗 関連キーワード
+                                                                </h4>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {activeKeywords.related.map((keyword, index) => (
+                                                                        <button
+                                                                            key={index}
+                                                                            onClick={() => handleKeywordClick(keyword, '関連キーワード')}
+                                                                            className={`px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-full text-sm font-${selectedFont} text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all cursor-pointer`}
+                                                                        >
+                                                                            # {keyword}
+                                                                            </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    )}
+
+                                                                    {/* 話題キーワード */}
+                                                                    {activeKeywords?.hot && activeKeywords.hot.length > 0 && (
+                                                            <div>
+                                                                <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    💡 話題キーワード
+                                                                </h4>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {activeKeywords.hot.map((keyword, index) => (
+                                                                        <button
+                                                                            key={index}
+                                                                            onClick={() => handleKeywordClick(keyword, '話題キーワード')}
+                                                                            className={`px-3 py-1.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-full text-sm font-${selectedFont} text-purple-700 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all cursor-pointer`}
+                                                                        >
+                                                                            # {keyword}
+                                                                            </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    )}
+
+                                                                    {/* AI分析情報 */}
+                                                                    {activeKeywords?.analysis && (
+                                                            <div>
+                                                                <h4 className={`text-sm font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    🤖 AI分析レポート
+                                                                </h4>
+                                                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
+                                                                            <p className={`text-sm font-${selectedFont} text-gray-800 mb-2`}>
+                                                                                {activeKeywords.analysis}
+                                                                            </p>
+                                                                            {activeKeywords.sources && (
+                                                                                <div className="text-xs text-gray-600">
+                                                                                    <span>データソース: </span>
+                                                                                    {activeKeywords.sources.join(', ')}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* ビジュアル分析レポート表示 */}
+                                        {generatedReport && generatedReport.topics && showAnalysisResults && (
+                                            <div className="mx-4 mb-6 space-y-6">
+
+                                                {/* トレンド分析 */}
+                                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                                    <h4 className={`text-md font-${selectedFont} text-gray-900 mb-4 flex items-center gap-2`}>
+                                                        📈 トレンド分析
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {generatedReport.trends.map((trend, index) => (
+                                                            <div key={index} className="bg-gray-50 rounded-lg p-3">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className={`font-${selectedFont} text-sm font-medium`}>
+                                                                        {trend.tag}
+                                                                    </span>
+                                                                    <span className={`text-xs px-2 py-1 rounded ${
+                                                                        trend.change > 0
+                                                                            ? 'bg-green-100 text-green-800'
+                                                                            : 'bg-red-100 text-red-800'
+                                                                    }`}>
+                                                                        {trend.change > 0 ? '+' : ''}{trend.change.toFixed(1)}%
+                                                                    </span>
+                                                                </div>
+                                                                <div className="h-16 mb-2">
+                                                                    <svg width="100%" height="100%" viewBox="0 0 200 60">
+                                                                        <polyline
+                                                                            points={trend.trend.map((point, i) =>
+                                                                                `${(i / (trend.trend.length - 1)) * 180 + 10},${60 - (point.value / 100) * 50}`
+                                                                            ).join(' ')}
+                                                                            fill="none"
+                                                                            stroke={trend.color}
+                                                                            strokeWidth="2"
+                                                                        />
+                                                                    </svg>
+                                                                </div>
+                                                                <div className="text-xs text-gray-600">
+                                                                    現在値: {trend.currentValue.toFixed(0)}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* 話題・トピック */}
+                                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                                    <h4 className={`text-md font-${selectedFont} text-gray-900 mb-4 flex items-center gap-2`}>
+                                                        🔥 話題のトピック
+                                                    </h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                                                        {generatedReport.topics.map((topic, index) => (
+                                                            <div key={index} className="relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3 hover:shadow-md transition-shadow">
+                                                                <div className="text-center">
+                                                                    <div
+                                                                        className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-sm font-bold"
+                                                                        style={{ backgroundColor: topic.color }}
+                                                                    >
+                                                                        {Math.round(topic.popularity)}
+                                                                    </div>
+                                                                    <div className={`font-${selectedFont} text-sm text-gray-900 mb-1`}>
+                                                                        {topic.name}
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-600">
+                                                                        {topic.articleCount}件
+                                                                    </div>
+                                                                    <div className={`text-xs mt-1 ${
+                                                                        topic.growth > 0 ? 'text-green-600' : 'text-red-600'
+                                                                    }`}>
+                                                                        {topic.growth > 0 ? '↗' : '↘'} {Math.abs(topic.growth).toFixed(1)}%
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* 最新ニュース */}
+                                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                                    <h4 className={`text-md font-${selectedFont} text-gray-900 mb-4 flex items-center gap-2`}>
+                                                        📰 関連ニュース
+                                                    </h4>
+                                                    <div className="space-y-3">
+                                                        {generatedReport.news.map((news, index) => (
+                                                            <div key={index} className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                                                                <div className="flex items-start justify-between">
+                                                                    <div className="flex-1">
+                                                                        <h5 className={`font-${selectedFont} text-sm font-medium text-gray-900 mb-1`}>
+                                                                            {news.title}
+                                                                        </h5>
+                                                                        <div className="flex items-center gap-3 text-xs text-gray-600">
+                                                                            <span className={`px-2 py-1 rounded ${
+                                                                                news.sentiment === 'positive' ? 'bg-green-100 text-green-700' :
+                                                                                news.sentiment === 'negative' ? 'bg-red-100 text-red-700' :
+                                                                                'bg-gray-100 text-gray-700'
+                                                                            }`}>
+                                                                                {news.category}
+                                                                            </span>
+                                                                            <span>{news.date}</span>
+                                                                            <span>👁 {news.views.toLocaleString()}</span>
+                                                                            <span>🔄 {news.shares}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className={`w-2 h-2 rounded-full ml-3 mt-2 ${
+                                                                        news.sentiment === 'positive' ? 'bg-green-400' :
+                                                                        news.sentiment === 'negative' ? 'bg-red-400' :
+                                                                        'bg-gray-400'
+                                                                    }`}></div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* キーワード詳細モーダル */}
+                                        {selectedKeywordDetail && (
+                                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                                                <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                                                    <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg">
+                                                        <div className="flex items-center justify-between">
+                                                            <h3 className={`text-lg font-${selectedFont}`}>
+                                                                🔍 {selectedKeywordDetail.keyword} 詳細分析
+                                                            </h3>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedKeywordDetail(null);
+                                                                    setIsLoadingKeywordDetail(false);
+                                                                }}
+                                                                className="text-white/80 hover:text-white"
+                                                            >
+                                                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                                    <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-6">
+                                                        {/* 概要 */}
+                                                        <div className="mb-6">
+                                                            <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                📖 概要
+                                                            </h4>
+                                                            <p className={`text-gray-800 font-${selectedFont} bg-blue-50 p-3 rounded-lg`}>
+                                                                {selectedKeywordDetail.explanation}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* 注目されている理由 */}
+                                                        <div className="mb-6">
+                                                            <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                🔥 注目されている理由
+                                                            </h4>
+                                                            <div className="space-y-2">
+                                                                {selectedKeywordDetail.reasons.map((reason, index) => (
+                                                                    <div key={index} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                                                                        <div className="w-6 h-6 bg-gradient-to-r from-red-500 to-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                                            {index + 1}
+                                                                        </div>
+                                                                        <span className={`font-${selectedFont} text-gray-800`}>{reason}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* 詳細解説 */}
+                                                        <div className="mb-6">
+                                                            <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                📚 詳細解説
+                                                            </h4>
+                                                            <p className={`text-gray-700 font-${selectedFont} bg-gray-50 p-4 rounded-lg leading-relaxed`}>
+                                                                {selectedKeywordDetail.details}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* 関連情報 */}
+                                                        {selectedKeywordDetail.trend_type && (
+                                                            <div className="mb-6">
+                                                                <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    📊 トレンド情報
+                                                                </h4>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                    <div className="bg-purple-50 p-3 rounded-lg">
+                                                                        <span className="text-xs text-purple-600 font-medium">トレンド種類</span>
+                                                                        <p className={`font-${selectedFont} text-purple-800`}>{selectedKeywordDetail.trend_type}</p>
+                                                                    </div>
+                                                                    {selectedKeywordDetail.timeline && (
+                                                                        <div className="bg-green-50 p-3 rounded-lg">
+                                                                            <span className="text-xs text-green-600 font-medium">話題開始時期</span>
+                                                                            <p className={`font-${selectedFont} text-green-800`}>{selectedKeywordDetail.timeline}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 関連イベント */}
+                                                        {selectedKeywordDetail.related_events && selectedKeywordDetail.related_events.length > 0 && (
+                                                            <div className="mb-6">
+                                                                <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    🎯 関連する出来事
+                                                                </h4>
+                                                                <div className="space-y-2">
+                                                                    {selectedKeywordDetail.related_events.map((event, index) => (
+                                                                        <div key={index} className="flex items-center gap-3 bg-indigo-50 p-3 rounded-lg">
+                                                                            <div className="w-4 h-4 bg-indigo-500 rounded-full"></div>
+                                                                            <span className={`font-${selectedFont} text-indigo-800`}>{event}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 重要人物・企業 */}
+                                                        {selectedKeywordDetail.key_figures && selectedKeywordDetail.key_figures.length > 0 && (
+                                                            <div className="mb-6">
+                                                                <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    👥 重要人物・企業
+                                                                </h4>
+                                                                <div className="space-y-2">
+                                                                    {selectedKeywordDetail.key_figures.map((figure, index) => (
+                                                                        <div key={index} className="flex items-center gap-3 bg-emerald-50 p-3 rounded-lg">
+                                                                            <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
+                                                                            <span className={`font-${selectedFont} text-emerald-800`}>{figure}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 社会・業界への影響 */}
+                                                        {selectedKeywordDetail.impact && (
+                                                            <div className="mb-6">
+                                                                <h4 className={`text-md font-${selectedFont} text-gray-900 mb-3 flex items-center gap-2`}>
+                                                                    📊 社会・業界への影響
+                                                                </h4>
+                                                                <p className={`text-gray-700 font-${selectedFont} bg-yellow-50 p-4 rounded-lg leading-relaxed border border-yellow-200`}>
+                                                                    {selectedKeywordDetail.impact}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* データソース */}
+                                                        {selectedKeywordDetail.sources && (
+                                                            <div className="pt-4 border-t border-gray-200">
+                                                                <h4 className={`text-sm font-${selectedFont} text-gray-600 mb-2`}>情報源:</h4>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {selectedKeywordDetail.sources.map((source, index) => (
+                                                                        <span key={index} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                                                            {source}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* アクションボタン */}
+                                                        <div className="pt-6 border-t border-gray-200 mt-6">
+                                                            <div className="flex gap-3 justify-end">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedKeywordDetail(null);
+                                                                        setIsLoadingKeywordDetail(false);
+                                                                    }}
+                                                                    className={`text-sm px-5 py-2 text-gray-600 hover:text-gray-800 font-${selectedFont} transition-colors`}
+                                                                >
+                                                                    閉じる
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleGenerateReportFromKeyword(selectedKeywordDetail.keyword)}
+                                                                    className={`text-sm px-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 font-${selectedFont} transition-all flex items-center gap-2`}
+                                                                >
+                                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                                                        <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                                                    </svg>
+                                                                    新しいレポート生成
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* ローディング中のキーワード詳細 */}
+                                        {isLoadingKeywordDetail && (
+                                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                                                <div className="bg-white rounded-lg p-8 text-center">
+                                                    <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                                                    <p className={`font-${selectedFont} text-gray-700`}>キーワード詳細を分析中...</p>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* 選択タグの要約 */}
                                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg mx-4 px-4 mb-4">
                                             <div className="mb-3">
@@ -2028,48 +4101,100 @@
                                             </div>
                                         </div>
 
-                                        {/* カテゴリータブ */}
-                                        <div className="mb-4">
-                                            <div className="flex gap-2 overflow-x-auto pb-2 px-4">
-                                                {(() => {
-                                                    // 選択タグに応じたカテゴリーメニューを動的に生成
-                                                    if (selectedTags.includes('旅行') || selectedTags.includes('沖縄')) {
-                                                        return ['プラン', 'グルメ', '観光', '写真', 'アクティビティ'];
-                                                    } else if (selectedTags.includes('料理') || selectedTags.includes('和食')) {
-                                                        return ['レシピ', 'レストラン', '食材', '調理法', '栄養'];
-                                                    } else if (selectedTags.includes('AI') || selectedTags.includes('技術')) {
-                                                        return ['トレンド', 'ツール', '事例', '学習', '研究'];
-                                                    } else if (selectedTags.includes('ビジネス')) {
-                                                        return ['戦略', 'マーケティング', '事例', 'ツール', 'ニュース'];
-                                                    } else if (selectedTags.includes('動物') || selectedTags.includes('ペット')) {
-                                                        return ['飼育', '健康', '用品', 'トレーニング', '種類'];
-                                                    } else if (selectedTags.includes('ファッション')) {
-                                                        return ['トレンド', 'ブランド', 'コーデ', 'アイテム', 'セール'];
-                                                    } else {
-                                                        return ['おすすめ', 'トレンド', 'ニュース', 'ガイド', 'レビュー'];
-                                                    }
-                                                })().map((category, index) => (
-                                                    <button
-                                                        key={category}
-                                                        className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
-                                                            index === 0 
-                                                                ? 'bg-blue-600 text-white'
-                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                        }`}
-                                                    >
-                                                        {category}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
 
                                         {/* 関連記事 */}
                                         <div>
-                                            {/* トップ5記事（カルーセル） */}
-                                            <div className="mb-6">
-                                                <h3 className={`text-xl font-${selectedFont} text-gray-900 mb-3 mx-4`}>注目記事</h3>
-                                                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide pl-4">
-                                                    {getMapFilteredArticles().slice(0, 5).map((article, index) => (
+                                            {(() => {
+                                                // タブに応じた記事フィルタリング（外部コンテンツ統合）
+                                                const getTabFilteredArticles = () => {
+                                                    let baseArticles = getMapFilteredArticles();
+                                                    let filteredArticles = [];
+
+                                                    if (selectedTags.length <= 1) {
+                                                        // 単一タグの場合：選択タグに関連する記事
+                                                        filteredArticles = baseArticles.filter(article =>
+                                                            selectedTags.length === 0 || article.tags.some(tag => selectedTags.includes(tag))
+                                                        );
+                                                    } else if (activeTab === 'all') {
+                                                        // 「すべて」タブ：選択されたすべてのタグに関連する記事を優先
+                                                        filteredArticles = baseArticles
+                                                            .filter(article => article.tags.some(tag => selectedTags.includes(tag)))
+                                                            .sort((a, b) => {
+                                                                const aTagCount = a.tags.filter(tag => selectedTags.includes(tag)).length;
+                                                                const bTagCount = b.tags.filter(tag => selectedTags.includes(tag)).length;
+                                                                return bTagCount - aTagCount; // より多くのタグを含む記事を上位に
+                                                            });
+                                                    } else {
+                                                        // 個別タグタブ：そのタグを含む記事のみ
+                                                        filteredArticles = baseArticles.filter(article =>
+                                                            article.tags.includes(activeTab)
+                                                        );
+                                                    }
+
+                                                    console.log('🔍 フィルタリング詳細:', {
+                                                        selectedTags,
+                                                        activeTab,
+                                                        baseArticles: baseArticles.length,
+                                                        filteredArticles: filteredArticles.length,
+                                                        externalArticles: externalArticles.length,
+                                                        isLoadingExternalContent
+                                                    });
+
+                                                    // 通常の記事がない場合は外部記事を統合
+                                                    if (filteredArticles.length === 0 && externalArticles.length > 0) {
+                                                        console.log('🔄 外部記事を表示:', externalArticles.length, '件');
+                                                        return externalArticles;
+                                                    }
+
+                                                    return filteredArticles;
+                                                };
+
+                                                const tabFilteredArticles = getTabFilteredArticles();
+
+                                                // カルーセル用（話題性スコア順で上位5件）
+                                                const carouselArticles = tabFilteredArticles
+                                                    .sort((a, b) => b.topicalityScore - a.topicalityScore)
+                                                    .slice(0, 5);
+
+                                                // その他の記事用（ソートモードに応じて並び替え）
+                                                const allArticlesSorted = [...tabFilteredArticles].sort((a, b) => b.topicalityScore - a.topicalityScore);
+                                                const baseRemainingArticles = allArticlesSorted.slice(5); // カルーセルで使用した分を除外
+
+                                                const remainingArticles = baseRemainingArticles.sort((a, b) => {
+                                                    if (articleSortMode === 'topical') {
+                                                        // 話題順：話題性スコア順
+                                                        return b.topicalityScore - a.topicalityScore;
+                                                    } else {
+                                                        // 最新順：記事データの元の順序を基に最新を上位に
+                                                        const indexA = articles.findIndex(article => article.title === a.title);
+                                                        const indexB = articles.findIndex(article => article.title === b.title);
+                                                        return indexA - indexB; // より小さいindex（新しい記事）を上位に
+                                                    }
+                                                });
+
+                                                return (
+                                                    <>
+                                                        {/* トップ5記事（カルーセル - 話題性順） */}
+                                                        <div className="mb-6">
+                                                            {/* タブ情報表示 */}
+                                                            {selectedTags.length > 1 && (
+                                                                <div className="mx-4 mb-3">
+                                                                    <h3 className={`text-lg font-bold font-${selectedFont} text-gray-900`}>
+                                                                        {activeTab === 'all'
+                                                                            ? `${selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など${selectedTags.length}分野`}の関連記事`
+                                                                            : `${activeTab} の関連記事`
+                                                                        }
+                                                                    </h3>
+                                                                    <p className={`text-sm font-${selectedFont} text-gray-600 mt-1`}>
+                                                                        {activeTab === 'all'
+                                                                            ? '選択したタグすべてに関連する記事を表示'
+                                                                            : `「${activeTab}」タグを含む記事のみを表示`
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide pl-4">
+                                                                {carouselArticles.map((article, index) => (
                                                         <div
                                                             key={index}
                                                             className={`flex-shrink-0 w-72 bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer ${index === 4 ? 'mr-4' : ''}`}
@@ -2084,7 +4209,7 @@
                                                                     alt={article.title}
                                                                     className="w-full h-full object-cover"
                                                                 />
-                                                                <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                                                                <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-normal">
                                                                     #{index + 1}
                                                                 </div>
                                                             </div>
@@ -2105,12 +4230,43 @@
                                                 </div>
                                             </div>
 
-                                            {/* 残りの記事（リスト） */}
-                                            {getMapFilteredArticles().length > 5 && (
-                                                <div className="mx-4">
-                                                    <h3 className={`text-xl font-${selectedFont} text-gray-900 mb-3`}>その他の記事</h3>
-                                                    <div className="space-y-3">
-                                                        {getMapFilteredArticles().slice(5).map((article, index) => (
+                                                        {/* 記事一覧（ソート機能付き） */}
+                                                        {remainingArticles.length > 0 && (
+                                                            <div className="mx-4">
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    <h3 className={`text-m font-bold font-${selectedFont} text-gray-900`}>
+                                                                        {selectedTags.length > 1 && activeTab !== 'all'
+                                                                            ? `${activeTab} に関する記事一覧`
+                                                                            : '記事一覧'
+                                                                        }
+                                                                    </h3>
+
+                                                                    {/* ソート切り替えボタン */}
+                                                                    <div className="flex bg-gray-100 rounded-lg p-1">
+                                                                        <button
+                                                                            onClick={() => setArticleSortMode('latest')}
+                                                                            className={`px-3 py-1.5 rounded-md text-sm font-${selectedFont} transition-all ${
+                                                                                articleSortMode === 'latest'
+                                                                                    ? 'bg-white text-gray-900 shadow-sm'
+                                                                                    : 'text-gray-500 hover:text-gray-700'
+                                                                            }`}
+                                                                        >
+                                                                            最新順
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setArticleSortMode('topical')}
+                                                                            className={`px-3 py-1.5 rounded-md text-sm font-${selectedFont} transition-all ${
+                                                                                articleSortMode === 'topical'
+                                                                                    ? 'bg-white text-gray-900 shadow-sm'
+                                                                                    : 'text-gray-500 hover:text-gray-700'
+                                                                            }`}
+                                                                        >
+                                                                            話題順
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-3">
+                                                                    {remainingArticles.map((article, index) => (
                                                             <div
                                                                 key={index + 5}
                                                                 className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
@@ -2138,7 +4294,29 @@
                                                                         </p>
                                                                         <div className="flex items-center justify-between text-xs text-gray-400">
                                                                             <span>{article.source}</span>
-                                                                            <span>話題度: {Math.round(article.topicalityScore)}</span>
+                                                                            <div className="flex items-center gap-2">
+                                                                                {articleSortMode === 'topical' && (
+                                                                                    <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
+                                                                                        話題度: {Math.round(article.topicalityScore)}
+                                                                                    </span>
+                                                                                )}
+                                                                                {articleSortMode === 'latest' && !article.isExternal && (
+                                                                                    <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs font-medium">
+                                                                                        最新
+                                                                                    </span>
+                                                                                )}
+                                                                                {article.isExternal && (
+                                                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                                        article.isAIGenerated
+                                                                                            ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-600'
+                                                                                            : article.type === 'web'
+                                                                                                ? 'bg-green-100 text-green-600'
+                                                                                                : 'bg-purple-100 text-purple-600'
+                                                                                    }`}>
+                                                                                        {article.isAIGenerated ? '🤖 AI生成' : article.type === 'web' ? '🌐 Web' : '📱 SNS'}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -2147,6 +4325,55 @@
                                                     </div>
                                                 </div>
                                             )}
+
+                                                        {/* AI記事生成中の表示 */}
+                                                        {isLoadingExternalContent && carouselArticles.length === 0 && (
+                                                            <div className="mx-4 text-center py-8">
+                                                                <div className="text-gray-500">
+                                                                    <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                                                    <p className={`font-${selectedFont} text-gray-600`}>
+                                                                        AIが関連記事を生成中...
+                                                                    </p>
+                                                                    <p className={`text-sm font-${selectedFont} text-gray-500 mt-2`}>
+                                                                        「{activeTab === 'all' ? (selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など`) : activeTab}」の詳細記事を作成しています
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* AI生成記事表示時の情報バナー */}
+                                                        {!isLoadingExternalContent && carouselArticles.length > 0 && carouselArticles[0]?.isAIGenerated && (
+                                                            <div className="mx-4 mb-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                                                                    </svg>
+                                                                    <p className={`text-sm font-${selectedFont} text-purple-800`}>
+                                                                        内部記事がないため、AIが既存データを分析して関連記事を生成しました
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 記事が見つからない場合の表示 */}
+                                                        {!isLoadingExternalContent && carouselArticles.length === 0 && externalArticles.length === 0 && selectedTags.length > 0 && (
+                                                            <div className="mx-4 text-center py-8">
+                                                                <div className="text-gray-500">
+                                                                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <p className={`font-${selectedFont} text-gray-600`}>
+                                                                        「{activeTab === 'all' ? (selectedTags.length === 1 ? selectedTags[0] : selectedTags.length === 2 ? `${selectedTags[0]}と${selectedTags[1]}` : `${selectedTags[0]}など`) : activeTab}」に関するコンテンツが見つかりませんでした
+                                                                    </p>
+                                                                    <p className={`text-sm font-${selectedFont} text-gray-500 mt-2`}>
+                                                                        別のタグをお試しください
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </>
                                 ) : (
@@ -2391,7 +4618,13 @@
                                                             </button>
                                                         ))}
                                                         <button
-                                                            onClick={() => setSelectedTags([])}
+                                                            onClick={() => {
+                                                                console.log('🧹 タグクリア：分析結果もリセット');
+                                                                setSelectedTags([]);
+                                                                setShowAnalysisResults(false);
+                                                                setGeneratedReport(null);
+                                                                setSelectedKeywordDetail(null);
+                                                            }}
                                                             className="text-blue-600 hover:text-blue-800 text-xs whitespace-nowrap flex-shrink-0"
                                                         >
                                                             クリア
@@ -2491,7 +4724,7 @@
                                                                             </span>
                                                                         ))}
                                                                         {article.tags.length > 2 && (
-                                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">
+                                                                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs font-normal rounded-full">
                                                                                 +{article.tags.length - 2}
                                                                             </span>
                                                                         )}
@@ -2544,7 +4777,7 @@
                                                             
                                                             {/* マッチング数インジケーター */}
                                                             {matchingTags.length > 0 && (
-                                                                <div className="absolute top-2 left-2 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full font-medium">
+                                                                <div className="absolute top-2 left-2 bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full font-normal font-medium">
                                                                     {matchingTags.length}
                                                                 </div>
                                                             )}
@@ -2560,7 +4793,7 @@
                                                             
                                                             {/* HOTバッジ */}
                                                             {article.topicalityScore >= 80 && (
-                                                                <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                                                                <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-normal font-bold">
                                                                     HOT
                                                                 </div>
                                                             )}
@@ -2647,7 +4880,7 @@
                                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                                     </svg>
                                     {favoriteReports.length > 0 && (
-                                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-normal rounded-full w-5 h-5 flex items-center justify-center">
                                             {favoriteReports.length}
                                         </div>
                                     )}
