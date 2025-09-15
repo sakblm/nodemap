@@ -14,9 +14,7 @@
                 extend: {
                     fontFamily: {
                         'normal': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-                        'handwriting': ['Zen Kurenaido', 'cursive'],
                         'klee': ['Klee One', 'cursive'],
-                        'yusei': ['Yusei Magic', 'cursive'],
                         'hachi': ['Hachi Maru Pop', 'cursive'],
                     }
                 }
@@ -26,7 +24,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Kurenaido&family=Klee+One:wght@400;600&family=Yusei+Magic&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Hachi+Maru+Pop&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body class="bg-gray-50">
@@ -967,9 +965,7 @@ ${externalData.map(data => `・${data.source || 'External API'}`).join('\n')}
             // フォント選択肢
             const fontOptions = [
                 { id: 'normal', name: '標準フォント', sample: 'あいうえお ABC' },
-                { id: 'handwriting', name: 'Zen Kurenaido', sample: 'あいうえお ABC' },
                 { id: 'klee', name: 'Klee One', sample: 'あいうえお ABC' },
-                { id: 'yusei', name: 'Yusei Magic', sample: 'あいうえお ABC' },
                 { id: 'hachi', name: 'Hachi Maru Pop', sample: 'あいうえお ABC' }
             ];
 
@@ -3679,7 +3675,30 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                             return hasKeywordData && showAnalysisResults;
                                         })() && (
                                             <div className="mx-4 mb-6">
-                                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                                {/* 分析レポート見出し */}
+                                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg mb-0">
+                                                    <div className="flex items-center justify-between">
+                                                        <h3 className={`text-lg font-${selectedFont}`}>
+                                                            📊 {(() => {
+                                                                const tags = selectedTags;
+                                                                return tags.length === 1 ? `${tags[0]}分析レポート` : tags.length === 2 ? `${tags[0]}と${tags[1]}の分析レポート` : `${tags[0]}など${tags.length}分野の分析レポート`;
+                                                            })()}
+                                                        </h3>
+                                                        <button
+                                                            onClick={() => {
+                                                                setGeneratedReport(null);
+                                                                setShowAnalysisResults(false);
+                                                                console.log('🚪 レポートを閉じる：分析結果もリセット');
+                                                            }}
+                                                            className="text-white/80 hover:text-white"
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                                                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white border border-gray-200 rounded-b-lg p-4">
                                                     <div className="space-y-4">
                                                         {(() => {
                                                             const activeKeywords = (() => {
@@ -3782,26 +3801,6 @@ ${tags.length === 1 ? tags[0] : tags.length === 2 ? `${tags[0]}と${tags[1]}の�
                                         {/* ビジュアル分析レポート表示 */}
                                         {generatedReport && generatedReport.topics && showAnalysisResults && (
                                             <div className="mx-4 mb-6 space-y-6">
-                                                {/* ヘッダー */}
-                                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg">
-                                                    <div className="flex items-center justify-between">
-                                                        <h3 className={`text-lg font-${selectedFont}`}>
-                                                            📊 {(() => { const tags = generatedReport.tags; return tags.length === 1 ? `${tags[0]}分析レポート` : tags.length === 2 ? `${tags[0]}と${tags[1]}の分析レポート` : `${tags[0]}など${tags.length}分野の分析レポート`; })()}
-                                                        </h3>
-                                                        <button
-                                                            onClick={() => {
-                                                                setGeneratedReport(null);
-                                                                setShowAnalysisResults(false);
-                                                                console.log('🚪 レポートを閉じる：分析結果もリセット');
-                                                            }}
-                                                            className="text-white/80 hover:text-white"
-                                                        >
-                                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                                                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5"/>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
 
                                                 {/* トレンド分析 */}
                                                 <div className="bg-white border border-gray-200 rounded-lg p-4">
